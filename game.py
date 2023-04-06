@@ -22,19 +22,19 @@ canChange = 0
 
 draw_line = True
 
-bricks1 = pygame.image.load('cobblestone.png')
+bricks1 = pygame.image.load('Assets\\cobblestone.png')
 bricks1 = pygame.transform.scale(bricks1, (tile_size, tile_size))
 
-bricks2 = pygame.image.load('mossy cobblestone.png')
+bricks2 = pygame.image.load('Assets\\mossy cobblestone.png')
 bricks2 = pygame.transform.scale(bricks2, (tile_size, tile_size))
 
-bricks3 = pygame.image.load('iron wall.png')
+bricks3 = pygame.image.load('Assets\\iron wall.png')
 bricks3 = pygame.transform.scale(bricks3, (tile_size, tile_size))
 
-planks1 = pygame.image.load('wood planks.png')
+planks1 = pygame.image.load('Assets\\wood planks.png')
 planks1 = pygame.transform.scale(planks1, (tile_size, tile_size))
 
-goal = pygame.image.load('goal.png')
+goal = pygame.image.load('Assets\\goal.png')
 goal = pygame.transform.scale(goal, (tile_size, tile_size))
 
 map_created = False
