@@ -10,6 +10,6 @@ v1.0.1
 
 To Do
 - Update raycaster to use DDA algorithm
-- Add support for sprites (NPCs, COllectables, enemies)
+- Add support for sprites (NPCs, collectables, enemies)
 - Add support for floor and wall textures
 - Create better ui for level editor
