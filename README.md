@@ -8,7 +8,7 @@ v1.0.0
 v1.0.1
 - Moved assets to a seprate file
 
-v1.0.2
+v1.1.0
 - Added vertical movement
 - Added support to upload images
 - Started adding support for multiple layers
