@@ -3,6 +3,7 @@ import numpy as np
 import numba as nb
 from numba.typed import List
 from random import randint
+import os
 
 pygame.init()
 
@@ -20,33 +21,29 @@ title_font = pygame.font.SysFont('arial', 100)
 renderMode = False
 canChange = 0
 
+rows = 3
+layers = []
+
 draw_line = True
 
-bricks1 = pygame.image.load('Assets\\cobblestone.png')
-bricks1 = pygame.transform.scale(bricks1, (tile_size, tile_size))
+assets = os.listdir("C:\\Users\\lrhar\\PycharmProjects\\3DRaycast\\Assets")
 
-bricks2 = pygame.image.load('Assets\\mossy cobblestone.png')
-bricks2 = pygame.transform.scale(bricks2, (tile_size, tile_size))
+textures = []
 
-bricks3 = pygame.image.load('Assets\\iron wall.png')
-bricks3 = pygame.transform.scale(bricks3, (tile_size, tile_size))
-
-planks1 = pygame.image.load('Assets\\wood planks.png')
-planks1 = pygame.transform.scale(planks1, (tile_size, tile_size))
-
-goal = pygame.image.load('Assets\\goal.png')
-goal = pygame.transform.scale(goal, (tile_size, tile_size))
+for i in assets:
+    if ".png" in i:
+        textures.append(pygame.transform.scale(pygame.image.load("Assets\\" + i), (tile_size, tile_size)))
 
 map_created = False
 
-map_file = open("Map", "r")
-map_lines = map_file.readlines()
-map_file.close()
+map1_file = open("Map", "r")
+map1_lines = map1_file.readlines()
+map1_file.close()
 
 
 level = List()
 tile_map = []
-for line in map_lines:
+for line in map1_lines:
     map_row = []
     for char in line.strip():
         map_row.append(int(char))
@@ -59,6 +56,7 @@ class Player:
     def __init__(self):
         self.x = 192
         self.y = 192
+        self.v = 0
         self.oldx = self.x
         self.oldy = self.y
         self.speed = 6
@@ -99,7 +97,7 @@ buttons = [play, edit]
 
 
 @nb.jit(nopython=True)
-def cast_ray(angle, iteration, lvlMap, x, y, fov, player_rot):
+def cast_ray(angle, iteration, lvlMap, x, y, fov, player_rot, layer, vertical):
     x = x
     y = y
     dist = 0
@@ -123,27 +121,21 @@ def cast_ray(angle, iteration, lvlMap, x, y, fov, player_rot):
             dist = int(abs(dist))
             casting = False
 
-        if not casting: break
+        if not casting:
 
-    wall_height = int(10000 / (dist + 1))
+            wall_height = int(10000 / (dist + 1))
 
-    wall_top = int(screen_height / 2 - wall_height / 2)
-    wall_bottom = wall_top + wall_height
+            wall_top = int(screen_height / 2 - wall_height / 2)
+            wall_bottom = wall_top + wall_height
 
-    ray_x = iteration * (screen_width / fov)
+            wall_top -= (wall_height * (layer - vertical))
+            wall_bottom -= (wall_height * (layer - vertical))
 
-    if lvlMap[row_index][col_index] == 1:
-        type = "1"
-    elif lvlMap[row_index][col_index] == 2:
-        type = "2"
-    elif lvlMap[row_index][col_index] == 3:
-        type = "3"
-    elif lvlMap[row_index][col_index] == 4:
-        type = "4"
-    elif lvlMap[row_index][col_index] == 5:
-        type = "5"
+            ray_x = iteration * (screen_width / fov)
 
-    return ray_x, wall_top, wall_bottom, wall_height, end[0], end[1], dist, type
+            type = lvlMap[row_index][col_index]
+
+            return ray_x, wall_top, wall_bottom, wall_height, end[0], end[1], dist, type
 
 
 def collision():
@@ -178,16 +170,11 @@ def refresh_window():
                 if i:
                     for j in i:
                         if level[int(y / tile_size)][int(x / tile_size)] > 0:
-                            if level[int(y / tile_size)][int(x / tile_size)] == 1:
-                                map_color = (bricks1.get_at((1, 1)))
-                            elif level[int(y / tile_size)][int(x / tile_size)] == 2:
-                                map_color = (bricks2.get_at((1, 0)))
-                            elif level[int(y / tile_size)][int(x / tile_size)] == 3:
-                                map_color = (bricks3.get_at((1, 1)))
-                            elif level[int(y / tile_size)][int(x / tile_size)] == 4:
-                                map_color = (planks1.get_at((1, 1)))
-                            elif level[int(y / tile_size)][int(x / tile_size)] == 5:
-                                map_color = (goal.get_at((1, 1)))
+                            try:
+                                map_color = textures[level[int(y / tile_size)][int(x / tile_size)] - 1].get_at((1, 0))
+                            except IndexError:
+                                level[int(y / tile_size)][int(x / tile_size)] = 0
+                                map_color = textures[0].get_at((1, 0))
                             pygame.draw.rect(screen, map_color, (x, y, tile_size, tile_size))
                         x += tile_size
                 x = 0
@@ -197,35 +184,28 @@ def refresh_window():
         deg = player.ray_angle - (player.fov//2)
         for i in range(screen_width + 1):
             x, y = player.hitbox.centerx, player.hitbox.centery
-            info = cast_ray(np.deg2rad(deg), it, level, x, y, player.fov, player.rotation)
             it += player.fov / screen_width
             deg += player.fov / screen_width
 
             if renderMode:
+                info = cast_ray(np.deg2rad(deg), it, level, x, y, player.fov, player.rotation, 0, 0)
                 lineColor = pygame.Color(255, 255, 255)
                 if draw_line:
                     pygame.draw.line(screen, lineColor, (player.hitbox.x, player.hitbox.y), (info[4], info[5]), 2)
                 else:
                     pygame.draw.rect(screen, lineColor, (info[4], info[5], 2, 2))
                 pygame.draw.rect(screen, (255, 0, 0), (player.hitbox.x, player.hitbox.y, 10, 10))
-                dirRay = cast_ray(np.deg2rad(player.ray_angle), 1, level, x, y, player.fov, player.rotation)
-                pygame.draw.line(screen, (255, 0, 0), (player.hitbox.x, player.hitbox.y), (dirRay[4], dirRay[5]), 5)
+                dirRay = cast_ray(np.deg2rad(player.ray_angle), 1, level, x, y, player.fov, player.rotation, 0, 0)
+                pygame.draw.line(screen, (255, 0, 0), (player.hitbox.x, player.hitbox.y), (dirRay[4], dirRay[5]), 1)
             else:
-                if info[7] == "1":
-                    tile_type = bricks1
-                elif info[7] == "2":
-                    tile_type = bricks2
-                elif info[7] == "3":
-                    tile_type = bricks3
-                elif info[7] == "4":
-                    tile_type = planks1
-                elif info[7] == "5":
-                    tile_type = goal
-                tile_x = (info[4] + info[5]) % tile_size
-                wall_surf = tile_type.subsurface((tile_x, 0, 1, tile_type.get_height()))
-                transWallSurf = pygame.transform.scale(wall_surf, (1, info[3]))
-                pygame.draw.line(screen, (0, 0, 0), (info[0], info[1]), (info[0], info[2]), 2)
-                screen.blit(transWallSurf, (info[0], info[1]))
+                for r in range(rows):
+                    row = cast_ray(np.deg2rad(deg), it, level, x, y, player.fov, player.rotation, r, player.v)
+                    tile_type = textures[row[7] - 1]
+                    tile_x = (row[4] + row[5]) % tile_size
+                    wall_surf = tile_type.subsurface((tile_x, 0, 1, tile_type.get_height()))
+                    transWallSurf = pygame.transform.scale(wall_surf, (1, row[3]))
+                    pygame.draw.line(screen, (0, 0, 0), (row[0], row[1]), (row[0], row[2]), 2)
+                    screen.blit(transWallSurf, (row[0], row[1]))
 
     if player.you_win:
 
@@ -300,11 +280,11 @@ def main():
         keys = pygame.key.get_pressed()
 
         if keys[pygame.K_a]:
-            player.rotation += 6
-            player.ray_angle -= 6
+            player.rotation += player.speed/2
+            player.ray_angle -= player.speed/2
         elif keys[pygame.K_d]:
-            player.rotation -= 6
-            player.ray_angle += 6
+            player.rotation -= player.speed/2
+            player.ray_angle += player.speed/2
 
         if keys[pygame.K_ESCAPE]:
             save()
@@ -312,6 +292,7 @@ def main():
 
         dx = player.speed * np.sin(np.deg2rad(player.rotation))
         dy = player.speed * np.cos(np.deg2rad(player.rotation))
+        player.speed = 6
         if keys[pygame.K_w]:
             player.oldx = player.x
             player.x -= dx
@@ -323,14 +304,18 @@ def main():
             player.oldy = player.y
             player.y += dy
 
+
+        if keys[pygame.K_f]:
+            player.speed *= 2
+
         if canChange >= 30 and keys[pygame.K_r]:
             renderMode = not renderMode
             canChange = 0
 
-        if keys[pygame.K_l]:
-            draw_line = True
-        if keys[pygame.K_q]:
-            draw_line = False
+        if keys[pygame.K_SPACE]:
+            player.v += 1
+        if keys[pygame.K_LCTRL] and player.v > 0:
+            player.v -= 1
 
         player.update_hitbox()
 
