@@ -18,4 +18,4 @@ To Do:
 - Add vertical collision
 - Add bottom and top of tiles
 - Add sprites
-- OPTIMIZE!!!!!!!!!!!!!!!!
+- OPTIMIZE!!!!!!!!!!!!!!!! (Aka switch to mojo when it comes out)
