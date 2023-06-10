@@ -11,7 +11,7 @@ screen_width = 1152
 screen_height = 768
 halfheight = screen_height // 2
 tile_size = 16
-screen = pygame.display.set_mode((screen_width, screen_height))
+screen = pygame.display.set_mode((screen_width, screen_height), pygame.HWSURFACE | pygame.DOUBLEBUF)
 
 clock = pygame.time.Clock()
 
@@ -21,42 +21,48 @@ title_font = pygame.font.SysFont('arial', 100)
 renderMode = False
 canChange = 0
 
-rows = 3
-layers = []
-
 draw_line = True
 
-assets = os.listdir("C:\\Users\\lrhar\\PycharmProjects\\3DRaycast\\Assets")
+current_dir = os.path.dirname(os.path.abspath(__file__))
+assets_dir = os.path.join(current_dir, "Assets")
+sprites = os.path.join(assets_dir, "sprites")
+walls = os.path.join(assets_dir, "walls")
+wall_list = os.listdir(walls)
 
 textures = []
 
-for i in assets:
+for i in wall_list:
     if ".png" in i:
-        textures.append(pygame.transform.scale(pygame.image.load("Assets\\" + i), (tile_size, tile_size)))
+        image_path = os.path.join(walls, i)
+        textures.append(pygame.transform.scale(pygame.image.load(image_path).convert(), (tile_size, tile_size)))
+
+dude = pygame.image.load(os.path.join(sprites, "dude.png"))
+dude_cache = {}
 
 map_created = False
 
-map1_file = open("Map", "r")
-map1_lines = map1_file.readlines()
-map1_file.close()
+map_file = open("Map", "r")
+map_lines = map_file.readlines()
+map_file.close()
 
+sprites = [[250, 550]]
 
 level = List()
 tile_map = []
-for line in map1_lines:
-    map_row = []
+for line in map_lines:
+    map_row1 = []
     for char in line.strip():
-        map_row.append(int(char))
-    if map_row:
-        level.append(map_row)
-        tile_map.append(map_row)
+        map_row1.append(int(char))
+    if map_row1:
+        level.append(map_row1)
+        tile_map.append(map_row1)
 
 
 class Player:
     def __init__(self):
         self.x = 192
         self.y = 192
-        self.v = 0
+        self.z = 0
         self.oldx = self.x
         self.oldy = self.y
         self.speed = 6
@@ -89,47 +95,38 @@ class Button:
 
 play = Button((screen_width//2 - 100), (screen_height//2 - 50), 'Start', 200, 50)
 edit = Button((screen_width//2 - 100), (screen_height//2 + 50), 'Level Editor', 200, 50)
-help = Button(1098, 714, '?', 28, 28)
-done = Button((screen_width//2 - 100), (screen_height//2 + 100), 'Done', 200, 50)
 win = Button((screen_width//2 - 100), (screen_height//2 + 100), "WINNER!!!", 200, 50)
 
 buttons = [play, edit]
 
 
 @nb.jit(nopython=True)
-def cast_ray(angle, iteration, lvlMap, x, y, fov, player_rot, layer, vertical):
-    x = x
-    y = y
+def cast_ray(angle, iteration, lvlMap, x, y, z, fov, player_rot):
     dist = 0
-    nextDist = 1
-    casting = True
     end = [x, y]
     cos_angle = np.cos(angle)
     sin_angle = np.sin(angle)
     rdx = np.sin(np.deg2rad(player_rot))
     rdy = np.cos(np.deg2rad(player_rot))
     dot_product = rdx * cos_angle + rdy * sin_angle
-    for i in range(len(lvlMap[0]) * tile_size + 1):
+    while True:
         row_index = int(end[1] / tile_size)
         col_index = int(end[0] / tile_size)
-        dist += nextDist
-        nextDist = 1
+        dist += 1
         end[0] = x + dist * cos_angle
         end[1] = y + dist * sin_angle
         if lvlMap[row_index][col_index] > 0:
+            dist = np.sqrt(((end[0] - x) ** 2) + ((end[1] - y) ** 2))
             dist *= dot_product
             dist = int(abs(dist))
-            casting = False
-
-        if not casting:
 
             wall_height = int(10000 / (dist + 1))
 
             wall_top = int(screen_height / 2 - wall_height / 2)
             wall_bottom = wall_top + wall_height
 
-            wall_top -= (wall_height * (layer - vertical))
-            wall_bottom -= (wall_height * (layer - vertical))
+            wall_top -= (wall_height * z)
+            wall_bottom -= (wall_height * z)
 
             ray_x = iteration * (screen_width / fov)
 
@@ -138,26 +135,29 @@ def cast_ray(angle, iteration, lvlMap, x, y, fov, player_rot, layer, vertical):
             return ray_x, wall_top, wall_bottom, wall_height, end[0], end[1], dist, type
 
 
-def collision():
-    if tile_map[int(player.y/tile_size)][int(player.x/tile_size)] > 0:
-        if tile_map[int(player.y/tile_size)][int(player.x/tile_size)] == 5:
-            player.you_win = True
-        else:
-            player.x = player.oldx
-            player.y = player.oldy
-
-
 def save():
     global level
     with open('Map', 'w') as f:
         for i in tile_map:
             f.write(''.join(map(str, i)) + '\n')
         level = List(tile_map)
-    return True
+
+
+def draw_sprites(px, py, sx, sy):
+    x = (sx - px) ** 2
+    y = (sy - py) ** 2
+    dist = np.sqrt(x + y)
+
+    sh = int(10000 / (dist + 1))
+    st = int(screen_height / 2 - sh / 2)
+
+    if sh in dude_cache:
+        screen.blit(dude_cache[sh], (500, st))
+    else:
+        dude_cache[sh] = pygame.transform.scale(dude, (sh, sh))
 
 
 def refresh_window():
-    global tile_type, rgb_values
     if not player.you_win:
         screen.fill((3, 37, 126))
         if not renderMode:
@@ -184,6 +184,7 @@ def refresh_window():
         deg = player.ray_angle - (player.fov//2)
         for i in range(screen_width + 1):
             x, y = player.hitbox.centerx, player.hitbox.centery
+            z = player.z
             it += player.fov / screen_width
             deg += player.fov / screen_width
 
@@ -198,14 +199,17 @@ def refresh_window():
                 dirRay = cast_ray(np.deg2rad(player.ray_angle), 1, level, x, y, player.fov, player.rotation, 0, 0)
                 pygame.draw.line(screen, (255, 0, 0), (player.hitbox.x, player.hitbox.y), (dirRay[4], dirRay[5]), 1)
             else:
-                for r in range(rows):
-                    row = cast_ray(np.deg2rad(deg), it, level, x, y, player.fov, player.rotation, r, player.v)
-                    tile_type = textures[row[7] - 1]
-                    tile_x = (row[4] + row[5]) % tile_size
-                    wall_surf = tile_type.subsurface((tile_x, 0, 1, tile_type.get_height()))
-                    transWallSurf = pygame.transform.scale(wall_surf, (1, row[3]))
-                    pygame.draw.line(screen, (0, 0, 0), (row[0], row[1]), (row[0], row[2]), 2)
-                    screen.blit(transWallSurf, (row[0], row[1]))
+                row = cast_ray(np.deg2rad(deg), it, level, x, y, z, player.fov, player.rotation)
+                if len(row) == 2:
+                    screen.blit(textures[3], (row[0], row[1]))
+                tile_type = textures[row[7] - 1]
+                tile_x = (row[4] + row[5]) % tile_size
+                wall_surf = tile_type.subsurface((tile_x, 0, 1, tile_type.get_height()))
+                transWallSurf = pygame.transform.scale(wall_surf, (1, row[3]))
+                pygame.draw.line(screen, (0, 0, 0), (row[0], row[1]), (row[0], row[2]), 2)
+                screen.blit(transWallSurf, (row[0], row[1]))
+
+                draw_sprites(player.x, player.y, sprites[0][0], sprites[0][1])
 
     if player.you_win:
 
@@ -303,7 +307,10 @@ def main():
             player.x += dx
             player.oldy = player.y
             player.y += dy
-
+        elif keys[pygame.K_SPACE]:
+            player.z -= .5
+        elif keys[pygame.K_LSHIFT] and player.z < 0:
+            player.z += .5
 
         if keys[pygame.K_f]:
             player.speed *= 2
@@ -312,14 +319,8 @@ def main():
             renderMode = not renderMode
             canChange = 0
 
-        if keys[pygame.K_SPACE]:
-            player.v += 1
-        if keys[pygame.K_LCTRL] and player.v > 0:
-            player.v -= 1
-
         player.update_hitbox()
 
-        collision()
         refresh_window()
 
         canChange += 1
