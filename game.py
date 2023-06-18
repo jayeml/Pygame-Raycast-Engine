@@ -18,7 +18,6 @@ clock = pygame.time.Clock()
 font = pygame.font.SysFont('arial', 30)
 title_font = pygame.font.SysFont('arial', 100)
 
-renderMode = False
 canChange = 0
 
 draw_line = True
@@ -36,16 +35,17 @@ for i in wall_list:
         image_path = os.path.join(walls, i)
         textures.append(pygame.transform.scale(pygame.image.load(image_path).convert(), (tile_size, tile_size)))
 
-dude = pygame.image.load(os.path.join(sprites, "dude.png"))
-dude_cache = {}
+dude = pygame.image.load(os.path.join(sprites, "dude.png")).convert_alpha()
+tree = pygame.image.load(os.path.join(sprites, "tree.png")).convert_alpha()
+burrito = pygame.image.load(os.path.join(sprites, "burrito.png")).convert_alpha()
+
+sprites = []
 
 map_created = False
 
 map_file = open("Map", "r")
 map_lines = map_file.readlines()
 map_file.close()
-
-sprites = [[250, 550]]
 
 level = List()
 tile_map = []
@@ -77,6 +77,13 @@ class Player:
         self.hitbox.centery = self.y
 
 
+class Sprite:
+    def __init__(self, x, y, pic):
+        self.x = x
+        self.y = y
+        self.type = pic
+
+
 class Button:
     def __init__(self, x, y, text, width, height):
         self.width = width
@@ -92,6 +99,12 @@ class Button:
         text_rect = text.get_rect(center=(self.x + self.width // 2, self.y + self.height // 2))
         screen.blit(text, text_rect)
 
+    def detect_collide(self, x, y):
+        if self.x <= x <= self.x + self.width and self.y <= y <= self.y + self.height:
+            return True
+        else:
+            return False
+
 
 play = Button((screen_width//2 - 100), (screen_height//2 - 50), 'Start', 200, 50)
 edit = Button((screen_width//2 - 100), (screen_height//2 + 50), 'Level Editor', 200, 50)
@@ -101,7 +114,7 @@ buttons = [play, edit]
 
 
 @nb.jit(nopython=True)
-def cast_ray(angle, iteration, lvlMap, x, y, z, fov, player_rot):
+def cast_walls(angle, iteration, lvlMap, x, y, z, fov, player_rot):
     dist = 0
     end = [x, y]
     cos_angle = np.cos(angle)
@@ -135,6 +148,25 @@ def cast_ray(angle, iteration, lvlMap, x, y, z, fov, player_rot):
             return ray_x, wall_top, wall_bottom, wall_height, end[0], end[1], dist, type
 
 
+@nb.jit(nopython=True)
+def canSeeSprite(px, py, sx, sy, s_dist, lvlMap):
+    end = [px, py]
+
+    steps = max((sx - px), (sy - py))
+    dx = (sx - px) / steps
+    dy = (sy - py) / steps
+
+    for i in range(s_dist):
+        row_index = int(end[1] / 16)
+        col_index = int(end[0] / 16)
+        if lvlMap[row_index][col_index] > 0:
+            return False
+        else:
+            end[0] += dx
+            end[1] += dy
+    return True
+
+
 def save():
     global level
     with open('Map', 'w') as f:
@@ -143,42 +175,10 @@ def save():
         level = List(tile_map)
 
 
-def draw_sprites(px, py, sx, sy):
-    x = (sx - px) ** 2
-    y = (sy - py) ** 2
-    dist = np.sqrt(x + y)
-
-    sh = int(10000 / (dist + 1))
-    st = int(screen_height / 2 - sh / 2)
-
-    if sh in dude_cache:
-        screen.blit(dude_cache[sh], (500, st))
-    else:
-        dude_cache[sh] = pygame.transform.scale(dude, (sh, sh))
-
-
 def refresh_window():
     if not player.you_win:
         screen.fill((3, 37, 126))
-        if not renderMode:
-            pygame.draw.rect(screen, (0, 128, 0), (0, screen_height / 2, screen_width, screen_height / 2))
-
-        if renderMode:
-            x = 0
-            y = 0
-            for i in tile_map:
-                if i:
-                    for j in i:
-                        if level[int(y / tile_size)][int(x / tile_size)] > 0:
-                            try:
-                                map_color = textures[level[int(y / tile_size)][int(x / tile_size)] - 1].get_at((1, 0))
-                            except IndexError:
-                                level[int(y / tile_size)][int(x / tile_size)] = 0
-                                map_color = textures[0].get_at((1, 0))
-                            pygame.draw.rect(screen, map_color, (x, y, tile_size, tile_size))
-                        x += tile_size
-                x = 0
-                y += tile_size
+        pygame.draw.rect(screen, (0, 128, 0), (0, screen_height / 2, screen_width, screen_height / 2))
 
         it = 0
         deg = player.ray_angle - (player.fov//2)
@@ -188,28 +188,28 @@ def refresh_window():
             it += player.fov / screen_width
             deg += player.fov / screen_width
 
-            if renderMode:
-                info = cast_ray(np.deg2rad(deg), it, level, x, y, player.fov, player.rotation, 0, 0)
-                lineColor = pygame.Color(255, 255, 255)
-                if draw_line:
-                    pygame.draw.line(screen, lineColor, (player.hitbox.x, player.hitbox.y), (info[4], info[5]), 2)
-                else:
-                    pygame.draw.rect(screen, lineColor, (info[4], info[5], 2, 2))
-                pygame.draw.rect(screen, (255, 0, 0), (player.hitbox.x, player.hitbox.y, 10, 10))
-                dirRay = cast_ray(np.deg2rad(player.ray_angle), 1, level, x, y, player.fov, player.rotation, 0, 0)
-                pygame.draw.line(screen, (255, 0, 0), (player.hitbox.x, player.hitbox.y), (dirRay[4], dirRay[5]), 1)
-            else:
-                row = cast_ray(np.deg2rad(deg), it, level, x, y, z, player.fov, player.rotation)
-                if len(row) == 2:
-                    screen.blit(textures[3], (row[0], row[1]))
-                tile_type = textures[row[7] - 1]
-                tile_x = (row[4] + row[5]) % tile_size
-                wall_surf = tile_type.subsurface((tile_x, 0, 1, tile_type.get_height()))
-                transWallSurf = pygame.transform.scale(wall_surf, (1, row[3]))
-                pygame.draw.line(screen, (0, 0, 0), (row[0], row[1]), (row[0], row[2]), 2)
-                screen.blit(transWallSurf, (row[0], row[1]))
+            row = cast_walls(np.deg2rad(deg), it, level, x, y, z, player.fov, player.rotation)
+            tile_type = textures[row[7] - 1]
+            tile_x = (row[4] + row[5]) % tile_size
+            wall_surf = tile_type.subsurface((tile_x, 0, 1, tile_type.get_height()))
+            transWallSurf = pygame.transform.scale(wall_surf, (1, row[3]))
+            pygame.draw.line(screen, (0, 0, 0), (row[0], row[1]), (row[0], row[2]), 2)
+            screen.blit(transWallSurf, (row[0], row[1]))
 
-                draw_sprites(player.x, player.y, sprites[0][0], sprites[0][1])
+            for sp in sprites:
+
+                sx = sp.x
+                sy = sp.y
+
+                h_angle = np.rad2deg(np.arctan2(sy - player.y, sx - player.x)) - player.ray_angle
+                screen_x = (h_angle * (screen_width / 60)) + (screen_width / 2)
+                dist = int(np.sqrt(((sx - player.x) ** 2) + ((sy - player.y) ** 2)))
+
+                if 0 < screen_x < screen_width and canSeeSprite(player.x, player.y, sx, sy, dist, level):
+
+                    sh = int(10000 / (dist + 1))/2
+                    st = int(screen_height / 2 - sh / 2)
+                    screen.blit(pygame.transform.scale(sp.type, (sh, sh)), (screen_x, st))
 
     if player.you_win:
 
@@ -314,10 +314,6 @@ def main():
 
         if keys[pygame.K_f]:
             player.speed *= 2
-
-        if canChange >= 30 and keys[pygame.K_r]:
-            renderMode = not renderMode
-            canChange = 0
 
         player.update_hitbox()
 
