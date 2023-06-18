@@ -13,9 +13,13 @@ v1.1.0
 - Added support to upload images
 - Started adding support for multiple layers
 
+v1.2.0
+- Added sprites
+- Removed multi-layer
+- Removed 2D mode
+
 To Do:
-- Allow layers to have sperate tilesets
-- Add vertical collision
-- Add bottom and top of tiles
-- Add sprites
-- OPTIMIZE!!!!!!!!!!!!!!!! (Aka switch to mojo when it comes out)
+- Add floor and ceiling
+- Optimize
+- Add combat
+- Give enemies Ai
