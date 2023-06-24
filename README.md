@@ -23,3 +23,6 @@ To Do:
 - Optimize
 - Add combat
 - Give enemies Ai
+
+Note:
+The game is hardly playble with sprites right now and I'm not sure how to optimize it so I think I'm going to take a break from this project until mojo comes out or I think of a good way to optimize it.
