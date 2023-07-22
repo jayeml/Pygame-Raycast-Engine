@@ -18,8 +18,15 @@ v0.2.0
 - Removed multi-layer
 - Removed 2D mode
 
-To Do:
-- Add floor and ceiling
-- Optimize
-- Add combat
-- Give enemies Ai
+v0.3.0
+- imporved fps
+- increased map size
+- improved level editor
+- changed textures
+- added victory screen
+- readded collision
+- can now save sprite positions
+
+Bugs to fix:
+- sprites appearing without player placing them
+- sprites not rendering and/or not rendering in the right position
