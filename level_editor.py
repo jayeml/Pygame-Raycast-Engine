@@ -211,4 +211,3 @@ def map_maker():
         pygame.display.update()
         save()
         clock.tick(30)
-        print(len(sprite_list))

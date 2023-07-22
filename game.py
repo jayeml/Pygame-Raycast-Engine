@@ -256,7 +256,7 @@ def refresh_window():
         dx = sx - player.x
         dy = sy - player.y
 
-        h_angle = (math.degrees(math.atan2(dy, dx)) - player.ray_angle) % 360
+        h_angle = math.degrees(math.atan2(dy, dx)) - player.ray_angle
         screen_x = int((h_angle * (screen_width / player.fov)) + (screen_width / 2))
         dist = int(math.sqrt(((sx - player.x) ** 2) + ((sy - player.y) ** 2)))
 
@@ -273,7 +273,7 @@ def refresh_window():
             player.you_win = False
             menu()
 
-    pygame.display.set_caption("Fps: " + str(cf) + "/40")
+    pygame.display.set_caption("Fps: " + str(int(clock.get_fps())) + "/40")
     pygame.display.update()
 
 
@@ -283,7 +283,7 @@ player = Player()
 
 
 def menu():
-    pygame.display.set_caption("Raycaster (Move Mouse)")
+    pygame.display.set_caption("Raycast Engine (Move Mouse)")
     title = Label("Raycast Engine", x=screen_width//2, y=150, font=title_font, center=True)
     while True:
         screen.fill((3, 37, 126))
@@ -299,7 +299,7 @@ def menu():
                 quit()
 
             elif event.type == pygame.MOUSEMOTION:
-                pygame.display.set_caption("Raycaster")
+                pygame.display.set_caption("Raycast Engine")
 
         if play.button(screen):
             player.rotation = 0
@@ -310,11 +310,14 @@ def menu():
             map_maker()
 
         pygame.display.update()
-        print(len(sprite_list))
 
 
 def main():
-    global running, canChange, renderMode, cf, draw_line
+    global running, canChange, draw_line
+    pygame.mouse.set_visible(False)
+    pygame.mouse.set_pos(screen_width // 2, screen_height // 2)
+    prev_mousePos = pygame.mouse.get_pos()[0]
+    accumulated_change = 0
     while running:
 
         for event in pygame.event.get():
@@ -322,38 +325,49 @@ def main():
                 running = False
                 quit()
 
-        cf = str(int(clock.get_fps()))
-
         keys = pygame.key.get_pressed()
 
-        if not player.you_win:
-            if keys[pygame.K_a]:
-                player.rotation += player.speed / 2
-                player.ray_angle -= player.speed / 2
-            elif keys[pygame.K_d]:
-                player.rotation -= player.speed / 2
-                player.ray_angle += player.speed / 2
+        mousePos = pygame.mouse.get_pos()[0]
+        change = (mousePos - prev_mousePos)
+        accumulated_change += change
+        player.ray_angle += accumulated_change / 4
+        player.rotation -= accumulated_change / 4
+        pygame.mouse.set_pos(screen_width // 2, screen_height // 2)
 
+        if change != 0:
+            accumulated_change = 0
+
+        if not player.you_win:
             if keys[pygame.K_ESCAPE]:
                 save()
+                pygame.mouse.set_visible(True)
                 return
 
             dx = player.speed * math.sin(math.radians(player.rotation))
             dy = player.speed * math.cos(math.radians(player.rotation))
+
+            side_dx = (player.speed / 2) * math.sin(math.radians(player.rotation + 90))
+            side_dy = (player.speed / 2) * math.cos(math.radians(player.rotation + 90))
+
+
+            player.oldx = player.x
+            player.oldy = player.y
             player.speed = 6
             if keys[pygame.K_w]:
-                player.oldx = player.x
                 player.x -= dx
-                player.oldy = player.y
                 player.y -= dy
-            elif keys[pygame.K_s]:
-                player.oldx = player.x
+            if keys[pygame.K_s]:
                 player.x += dx
-                player.oldy = player.y
                 player.y += dy
-            elif keys[pygame.K_SPACE]:
+            if keys[pygame.K_a]:
+                player.x -= side_dx
+                player.y -= side_dy
+            if keys[pygame.K_d]:
+                player.x += side_dx
+                player.y += side_dy
+            if keys[pygame.K_SPACE]:
                 player.z -= .5
-            elif keys[pygame.K_LSHIFT] and player.z < 0:
+            if keys[pygame.K_LSHIFT] and player.z < 0:
                 player.z += .5
 
             if keys[pygame.K_f]:
@@ -367,6 +381,8 @@ def main():
                 player.y = player.oldy
 
         player.update_hitbox()
+
+        pygame.mouse.set_pos(screen_width // 2, screen_height // 2)
 
         refresh_window()
 
