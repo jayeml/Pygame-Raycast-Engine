@@ -1,4 +1,6 @@
 from game import *
+from sprite import Sprite
+from Widgets.label import Label
 
 
 help = Button((1098, 714, 28, 28), text='?', color=(255, 0, 0), press_color=(255, 0, 0))
@@ -47,7 +49,7 @@ def instructions():
 def map_maker():
     editor_running = True
     tile_type = 1
-    sprite_type = 1
+    sprite_type = 0
     show_help = False
     sprite_place = 0
     mode = True
@@ -55,8 +57,6 @@ def map_maker():
     pygame.display.set_caption("Level Editor")
 
     while editor_running:
-
-        cf = str(int(clock.get_fps()))
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -103,10 +103,9 @@ def map_maker():
                             level[int(mousePos[1] / 12)][int(mousePos[0] / 12)] = 9
                 if mouse[2]:
                     level[int(mousePos[1] / 12)][int(mousePos[0] / 12)] = 0
-        if not mode:
-            if mouse[0] and sprite_place >= 10:
-                sprite_place = 0
-                sprite_list.append(Sprite(mousePos[0], mousePos[1], sprite_type))
+        if not mode and sprite_type != 0 and mouse[0] and sprite_place > 10 and mousePos[0] < 876 and mousePos[1] < 768:
+            sprite_place = 0
+            sprite_list.append(Sprite(mousePos[0] / 12 * 16, mousePos[1] / 12 * 16, sprite_type))
 
         screen.fill((64, 64, 64))
         x = 0
@@ -126,7 +125,7 @@ def map_maker():
             y += 12
 
         for sp in sprite_list:
-            screen.blit(pygame.transform.scale(type2sprite[sp.type], (12, 12)), (sp.x - 6, sp.y - 6))
+            screen.blit(pygame.transform.scale(type2sprite[sp.type], (12, 12)), (sp.x * 12 / 16, sp.y * 12 / 16))
 
         pygame.draw.rect(screen, (0, 0, 255), (144, 144, 12, 12))
 
@@ -159,6 +158,7 @@ def map_maker():
         if walls.button(screen):
             mode = True
         if npcs.button(screen):
+            sprite_place = 0
             mode = False
 
         if mode:
@@ -211,3 +211,4 @@ def map_maker():
         pygame.display.update()
         save()
         clock.tick(30)
+        print(mousePos)

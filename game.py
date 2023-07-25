@@ -1,11 +1,11 @@
 import pygame
 import math
-import json
 import os
+import json
+import sprite
 import numba as nb
 from random import randint
 from Widgets.button import Button
-from Widgets.label import Label
 from numba.typed import List
 
 pygame.init()
@@ -22,6 +22,8 @@ font = pygame.font.SysFont('arial', 30)
 title_font = pygame.font.SysFont('arial', 100)
 
 canChange = 0
+
+bob_height = .05
 
 draw_line = True
 
@@ -42,7 +44,7 @@ for i in wall_list:
         image_path = os.path.join(walls, i)
         textures.append(pygame.transform.scale(pygame.image.load(image_path).convert(), (tile_size, tile_size)))
 
-dude = pygame.image.load(os.path.join(sprites_dir, "dude.png")).convert_alpha()
+dude = pygame.image.load(os.path.join(sprites_dir, "ufo dude.png")).convert_alpha()
 tree = pygame.image.load(os.path.join(sprites_dir, "tree.png")).convert_alpha()
 burrito = pygame.image.load(os.path.join(sprites_dir, "burrito.png")).convert_alpha()
 
@@ -67,6 +69,8 @@ for line in map_lines:
         level.append(map_row1)
         tile_map.append(map_row1)
 
+sprite_list = sprite.load_sprites()
+
 
 def get_tile_color(image):
     width, height = image.get_size()
@@ -75,7 +79,7 @@ def get_tile_color(image):
     for x in range(width):
         for y in range(height):
             r, g, b, _ = image.get_at((x, y))
-            if g > r and g > b:
+            if g > r and b < 200:
                 g *= 1.5
             total_r += r
             total_g += g
@@ -100,46 +104,68 @@ class Player:
         self.z = 0
         self.oldx = self.x
         self.oldy = self.y
-        self.speed = 6
+        self.speed = 4
         self.rotation = 0
         self.ray_angle = 270
         self.fov = 60
         self.hitbox = pygame.Rect(self.x - 25, self.y - 25, 16, 16)
         self.you_win = False
+        self.view_bob_offset = 0.0
+        self.view_bob_speed = 0.0
+        self.moved = False
 
-    def update_hitbox(self):
+    def update(self):
         self.hitbox.centerx = self.x
         self.hitbox.centery = self.y
 
+        if self.speed > 0:
+            self.view_bob_speed = 0.01 * self.speed / self.speed
+        else:
+            self.view_bob_speed = 0.0
 
-class Sprite:
-    def __init__(self, x, y, type):
-        self.x = x
-        self.y = y
-        self.type = type
+        self.view_bob_offset = math.sin(pygame.time.get_ticks() * self.view_bob_speed) * bob_height
+        self.view_bob_offset = 0
 
-    def to_json(self):
-        return {
-            "x_pos": self.y,
-            "y_pos": self.y,
-            "type": self.type
-        }
+    def collision(self, dx, dy):
+        new_x = self.x + dx
+        new_y = self.y + dy
 
-    @classmethod
-    def from_json(cls, json_data):
-        return cls(
-            x=json_data["x_pos"],
-            y=json_data["y_pos"],
-            type=json_data["type"]
-        )
+        final_x = self.x
+        final_y = self.y
 
+        row_index, col_index = get_index(self.y, self.x)
+        new_row, new_col = get_index(new_y, new_x)
 
-try:
-    with open("sprite_positions", 'r') as file:
-        json_data = json.load(file)
-        sprite_list = [Sprite.from_json(data) for data in json_data]
-except json.JSONDecodeError:
-    sprite_list = []
+        if tile_map[row_index][new_col] == 0:
+            final_x += dx
+            self.moved = True
+
+        if tile_map[new_row][col_index] == 0:
+            final_y += dy
+            self.moved = True
+
+        if tile_map[new_row][new_col] == 9:
+            self.you_win = True
+
+        return final_x, final_y
+
+    def can_see_sprite(self, sx, sy, lvlmap):
+        dx = sx - self.x
+        dy = sy - self.y
+        dist = math.sqrt(dx ** 2 + dy ** 2)
+        dx /= dist
+        dy /= dist
+
+        steps = int(dist)
+
+        for i in range(steps):
+            x = int(self.x + dx * i)
+            y = int(self.y + dy * i)
+            row_index = int(y / 16)
+            col_index = int(x / 16)
+            if lvlmap[row_index][col_index] > 0:
+                return False
+        return True
 
 
 def random_color():
@@ -147,6 +173,12 @@ def random_color():
     g = randint(0, 255)
     b = randint(0, 255)
     return r, g, b
+
+
+def get_index(row, col):
+    row_index = int(row / tile_size)
+    col_index = int(col / tile_size)
+    return row_index, col_index
 
 
 play = Button(((screen_width // 2 - 100), (screen_height // 2 - 50), 200, 50), text='Start',
@@ -167,12 +199,15 @@ def cast_walls(angle, iteration, lvlMap, x, y, z, fov, player_rot):
     rdx = math.sin(math.radians(player_rot))
     rdy = math.cos(math.radians(player_rot))
     dot_product = rdx * cos_angle + rdy * sin_angle
+
     while True:
         row_index = int(end[1] / tile_size)
         col_index = int(end[0] / tile_size)
         dist += 1
-        end[0] = x + dist * cos_angle
-        end[1] = y + dist * sin_angle
+
+        if row_index < 0 or col_index < 0 or row_index >= len(lvlMap) or col_index >= len(lvlMap[0]):
+            break
+
         if lvlMap[row_index][col_index] > 0:
             dist *= dot_product
             dist = int(abs(dist))
@@ -187,46 +222,29 @@ def cast_walls(angle, iteration, lvlMap, x, y, z, fov, player_rot):
 
             ray_x = iteration * (screen_width / fov)
 
-            type = lvlMap[row_index][col_index]
+            wall_type = lvlMap[row_index][col_index]
 
-            return ray_x, wall_top, wall_bottom, wall_height, end[0], end[1], dist, type, False
+            return ray_x, wall_top, wall_bottom, wall_height, end[0], end[1], dist, wall_type
+
+        end[0] = x + dist * cos_angle
+        end[1] = y + dist * sin_angle
 
 
 def render_walls(x, y):
     it = 0
     deg = player.ray_angle - (player.fov // 2)
     for i in range(screen_width + 1):
-        z = player.z
         it += player.fov / screen_width
         deg += player.fov / screen_width
 
-        row = cast_walls(math.radians(deg), it, level, x, y, z, player.fov, player.rotation)
+        row = cast_walls(math.radians(deg), it, level, x, y, player.z, player.fov, player.rotation)
         tile_type = textures[row[7] - 1]
         tile_x = (row[4] + row[5]) % tile_size
         wall_surf = tile_type.subsurface((tile_x, 0, 1, tile_type.get_height()))
         transWallSurf = pygame.transform.scale(wall_surf, (1, row[3]))
+
         pygame.draw.line(screen, color_averages[row[7] - 1], (row[0], row[1]), (row[0], row[2]), 2)
         screen.blit(transWallSurf, (row[0], row[1]))
-
-
-@nb.jit(nopython=True)
-def canSeeSprite(px, py, sx, sy, lvlMap):
-    dx = sx - px
-    dy = sy - py
-    dist = math.sqrt(dx ** 2 + dy ** 2)
-    dx /= dist
-    dy /= dist
-
-    steps = int(dist)
-
-    for i in range(steps):
-        x = int(px + dx * i)
-        y = int(py + dy * i)
-        row_index = int(y / 16)
-        col_index = int(x / 16)
-        if lvlMap[row_index][col_index] > 0:
-            return False
-    return True
 
 
 def save():
@@ -239,39 +257,35 @@ def save():
     if sprite_list:
         json_sprites = [sp.to_json() for sp in sprite_list]
 
-        with open("sprite_positions", 'w') as sp_pos:
+        with open("sprite_positions.json", 'w') as sp_pos:
             json.dump(json_sprites, sp_pos, indent=2)
 
 
 def refresh_window():
     screen.fill((3, 37, 126))
-    pygame.draw.rect(screen, (0, 128, 0), (0, screen_height / 2, screen_width, screen_height / 2))
+
+    if player.moved:
+        player.z += player.view_bob_offset
+        if player.z > 0:
+            player.z = 0
+    elif player.z < 0:
+        player.z += .01
+
+    pygame.draw.rect(screen, (0, 128, 0), (0, screen_height / 2 + player.z, screen_width, screen_height / 2))
 
     render_walls(player.hitbox.centerx, player.hitbox.centery)
-
-    for sp in sprite_list:
-        sx = sp.x
-        sy = sp.y
-
-        dx = sx - player.x
-        dy = sy - player.y
-
-        h_angle = math.degrees(math.atan2(dy, dx)) - player.ray_angle
-        screen_x = int((h_angle * (screen_width / player.fov)) + (screen_width / 2))
-        dist = int(math.sqrt(((sx - player.x) ** 2) + ((sy - player.y) ** 2)))
-
-        if canSeeSprite(player.x, player.y, sx, sy, level):
-            sh = int(10000 / (dist + 1)) / 2
-            st = int(screen_height / 2 - sh / 2)
-
-            screen.blit(pygame.transform.scale(type2sprite[sp.type], (sh, sh)), (screen_x, st))
+    sprite.render_sprites(sprite_list, player, screen, type2sprite, level)
 
     if player.you_win:
+        pygame.mouse.set_visible(True)
         screen.blit(victory_screen, (0, 0))
         win.hover_color = random_color()
         if win.button(screen):
             player.you_win = False
-            menu()
+            pygame.mouse.set_visible(False)
+            player.x = 192
+            player.y = 192
+            player.z = 0
 
     pygame.display.set_caption("Fps: " + str(int(clock.get_fps())) + "/40")
     pygame.display.update()
@@ -282,42 +296,13 @@ running = True
 player = Player()
 
 
-def menu():
-    pygame.display.set_caption("Raycast Engine (Move Mouse)")
-    title = Label("Raycast Engine", x=screen_width//2, y=150, font=title_font, center=True)
-    while True:
-        screen.fill((3, 37, 126))
-        pygame.draw.rect(screen, (0, 128, 0), (0, screen_height / 2, screen_width, screen_height / 2))
-        render_walls(192, 192)
-        player.ray_angle += .2
-        player.rotation -= .2
-        title.show(screen)
-        player.x = player.y = 192
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                save()
-                quit()
-
-            elif event.type == pygame.MOUSEMOTION:
-                pygame.display.set_caption("Raycast Engine")
-
-        if play.button(screen):
-            player.rotation = 0
-            player.ray_angle = 270
-            main()
-        if edit.button(screen):
-            from level_editor import map_maker
-            map_maker()
-
-        pygame.display.update()
-
-
 def main():
     global running, canChange, draw_line
     pygame.mouse.set_visible(False)
     pygame.mouse.set_pos(screen_width // 2, screen_height // 2)
     prev_mousePos = pygame.mouse.get_pos()[0]
     accumulated_change = 0
+
     while running:
 
         for event in pygame.event.get():
@@ -327,17 +312,22 @@ def main():
 
         keys = pygame.key.get_pressed()
 
-        mousePos = pygame.mouse.get_pos()[0]
-        change = (mousePos - prev_mousePos)
-        accumulated_change += change
-        player.ray_angle += accumulated_change / 4
-        player.rotation -= accumulated_change / 4
-        pygame.mouse.set_pos(screen_width // 2, screen_height // 2)
-
-        if change != 0:
-            accumulated_change = 0
+        player.moved = False
 
         if not player.you_win:
+
+            mousePos = pygame.mouse.get_pos()[0]
+            change = (mousePos - prev_mousePos)
+            accumulated_change += change
+            player.ray_angle += accumulated_change / 4
+            player.rotation -= accumulated_change / 4
+            player.ray_angle %= 360
+            player.rotation %= 360
+            pygame.mouse.set_pos(screen_width // 2, screen_height // 2)
+
+            if change != 0:
+                accumulated_change = 0
+
             if keys[pygame.K_ESCAPE]:
                 save()
                 pygame.mouse.set_visible(True)
@@ -349,22 +339,18 @@ def main():
             side_dx = (player.speed / 2) * math.sin(math.radians(player.rotation + 90))
             side_dy = (player.speed / 2) * math.cos(math.radians(player.rotation + 90))
 
-
             player.oldx = player.x
             player.oldy = player.y
-            player.speed = 6
+            player.speed = 4
+
             if keys[pygame.K_w]:
-                player.x -= dx
-                player.y -= dy
+                player.x, player.y = player.collision(-dx, -dy)
             if keys[pygame.K_s]:
-                player.x += dx
-                player.y += dy
+                player.x, player.y = player.collision(dx, dy)
             if keys[pygame.K_a]:
-                player.x -= side_dx
-                player.y -= side_dy
+                player.x, player.y = player.collision(-side_dx, -side_dy)
             if keys[pygame.K_d]:
-                player.x += side_dx
-                player.y += side_dy
+                player.x, player.y = player.collision(side_dx, side_dy)
             if keys[pygame.K_SPACE]:
                 player.z -= .5
             if keys[pygame.K_LSHIFT] and player.z < 0:
@@ -373,16 +359,16 @@ def main():
             if keys[pygame.K_f]:
                 player.speed *= 2
 
-        if tile_map[int(player.y / tile_size)][int(player.x / tile_size)] > 0 and player.z >= 0:
+            pygame.mouse.set_pos(screen_width // 2, screen_height // 2)
+
+        if tile_map[int(player.y / tile_size)][int(player.x / tile_size)] > 0:
             if tile_map[int(player.y / tile_size)][int(player.x / tile_size)] == 9:
                 player.you_win = True
             else:
                 player.x = player.oldx
                 player.y = player.oldy
 
-        player.update_hitbox()
-
-        pygame.mouse.set_pos(screen_width // 2, screen_height // 2)
+        player.update()
 
         refresh_window()
 
