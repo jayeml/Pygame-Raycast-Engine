@@ -30,11 +30,8 @@ def render_sprites(sp_list, player, screen, type2sprite, level):
 
     for sp in sp_list:
         sp.dist = math.dist([sp.x, sp.y], [player.x, player.y])
-        print(sp.dist)
 
     new_sp_list = sorted(sp_list, key=lambda x: x.dist, reverse=True)
-    for sp in new_sp_list:
-        print(sp.dist)
 
     for sp in new_sp_list:
 
