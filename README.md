@@ -1,6 +1,9 @@
 # Pygame_Raycast_Engine
 A raycast engine made in python with the pygame library
 
+Major changelog:
+
+```
 v0.1.0
 - Initial game release
 - Added level editor
@@ -36,3 +39,7 @@ v0.4.0
 - fixed sprite rendering bugs
 - updated dude texture
 - organized code a bit
+
+v0.4.1
+- removed some debugging code
+```
