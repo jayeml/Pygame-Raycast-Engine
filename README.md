@@ -35,3 +35,4 @@ v0.3.1
 v0.4.0
 - fixed sprite rendering bugs
 - updated dude texture
+- organized code a bit
