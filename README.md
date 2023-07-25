@@ -30,9 +30,8 @@ v0.3.0
 v0.3.1
 - removed some debugging code accidentally left in in previous update
 - can now rotate the player using the mouse
-- a and d keys are now used for strafing 
+- a and d keys are now used for strafing
 
-Bugs to fix:
-- sprites appearing without player placing them
-- sprites not rendering and/or not rendering in the right position
-- sprites locking to a line when reloading them
+v0.4.0
+- fixed sprite rendering bugs
+- updated dude texture
