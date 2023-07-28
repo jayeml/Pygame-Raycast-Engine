@@ -19,6 +19,7 @@ v0.1.3
 v0.2.0
 - Added sprites
 - Removed multi-layer
+- Removed collision
 - Removed 2D mode
 
 v0.3.0
@@ -29,6 +30,7 @@ v0.3.0
 - added victory screen
 - readded collision
 - can now save sprite positions
+- Removed file upload (can still change textures in file explorer just not in game)
 
 v0.3.1
 - removed some debugging code accidentally left in in previous update
@@ -42,4 +44,11 @@ v0.4.0
 
 v0.4.1
 - removed some debugging code
+
+v0.5.0
+- fixed rendering bugs
+- improved preformce (game now runs at 60 fps)
+- added view bobbing
+- added translucent walls
+- improved collision, players can now slide along walls
 ```
