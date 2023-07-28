@@ -1,4 +1,4 @@
-from game import *
+from main import *
 from Widgets.label import Label
 
 
@@ -7,7 +7,6 @@ def menu():
     title = Label("Raycast Engine", x=screen_width//2, y=150, font=title_font, center=True)
     while True:
         screen.fill((3, 37, 126))
-        pygame.draw.rect(screen, (0, 128, 0), (0, screen_height / 2, screen_width, screen_height / 2))
         render_walls(192, 192)
         player.ray_angle += .2
         player.rotation -= .2

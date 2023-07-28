@@ -1,4 +1,4 @@
-from game import *
+from main import *
 from sprite import Sprite
 from Widgets.label import Label
 
@@ -125,7 +125,7 @@ def map_maker():
             y += 12
 
         for sp in sprite_list:
-            screen.blit(pygame.transform.scale(type2sprite[sp.type], (12, 12)), (sp.x * 12 / 16, sp.y * 12 / 16))
+            screen.blit(pygame.transform.scale(type2sprite[sp.type], (12, 12)), (sp.x * 12 / 16 - 6, sp.y * 12 / 16 - 6))
 
         pygame.draw.rect(screen, (0, 0, 255), (144, 144, 12, 12))
 
@@ -211,3 +211,4 @@ def map_maker():
         pygame.display.update()
         save()
         clock.tick(30)
+        print(mousePos)

@@ -1,6 +1,7 @@
 import json
 import math
 import pygame
+from numba import jit
 
 
 class Sprite:
@@ -35,19 +36,10 @@ def render_sprites(sp_list, player, screen, type2sprite, level):
 
     for sp in new_sp_list:
 
-        sx = sp.x
-        sy = sp.y
+        sp_info = sprite_calcs(sp.x, sp.y, player.x, player.y, player.z, player.ray_angle, level)
 
-        h_angle = (math.degrees(math.atan2(sy - player.y, sx - player.x)) % 360) - player.ray_angle
-        screen_x = (h_angle * 19.2 + 576)
-        dist = int(math.dist([sp.x, sp.y], [player.x, player.y]))
-
-        if player.can_see_sprite(sx, sy, level) and -50 < screen_x < 1172:
-            sh = (int(10000 / (dist + 1)) / 2)
-
-            st = int(768 / 2 - sh / 2)
-
-            screen.blit(pygame.transform.scale(type2sprite[sp.type], (sh, sh)), (screen_x, st))
+        if sp_info[0] is not None:
+            screen.blit(pygame.transform.scale(type2sprite[sp.type], (sp_info[0], sp_info[0])), (sp_info[1], sp_info[2]))
 
 
 def load_sprites():
@@ -59,3 +51,38 @@ def load_sprites():
         sprite_list = []
     return sprite_list
 
+
+@jit(nopython=True)
+def sprite_calcs(sx, sy, px, py, pz, p_rot, lvl):
+    h_angle = (math.degrees(math.atan2(sy - py, sx - px)) % 360) - p_rot
+    screen_x = (h_angle * 19.2 + 576)
+    dist = math.sqrt((sx - px) ** 2 + (sy - py) ** 2)
+
+    if can_see_sprite(px, py, sx, sy, lvl, dist) and -50 < screen_x < 1172:
+        sh = (int(10000 / (dist + 1)) / 2)
+        st = int(768 / 2 - sh / 2)
+
+        st -= sh * pz
+
+        return sh, screen_x, st
+    else:
+        return None, None, None
+
+
+@jit(nopython=True)
+def can_see_sprite(px, py, sx, sy, lvl_map, dist):
+    dx = sx - px
+    dy = sy - py
+    dx /= dist
+    dy /= dist
+
+    steps = int(dist)
+
+    for i in range(steps):
+        x = int(px + dx * i)
+        y = int(py + dy * i)
+        row_index = int(y / 16)
+        col_index = int(x / 16)
+        if lvl_map[row_index][col_index] > 0:
+            return False
+    return True
