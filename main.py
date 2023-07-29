@@ -4,6 +4,7 @@ import os
 import json
 import sprite
 import numba as nb
+import numpy as np
 from random import randint
 from Widgets.button import Button
 
@@ -33,6 +34,10 @@ wall_list = os.listdir(walls)
 victory_screen = pygame.image.load(os.path.join(assets_dir, "victory.jpg"))
 victory_screen = pygame.transform.scale(victory_screen, (screen_width, screen_height))
 
+sky1 = pygame.image.load(os.path.join(assets_dir, "sky.jpg"))
+sky1 = pygame.transform.scale(sky1, (screen_width / 2, screen_height//2))
+
+
 textures = []
 color_averages = []
 
@@ -40,6 +45,8 @@ for i in wall_list:
     if ".png" in i:
         image_path = os.path.join(walls, i)
         textures.append(pygame.transform.scale(pygame.image.load(image_path).convert(), (tile_size, tile_size)))
+
+textures_data = np.array([pygame.surfarray.array3d(texture) for texture in textures], dtype=np.uint8)
 
 dude = pygame.image.load(os.path.join(sprites_dir, "ufo dude.png")).convert_alpha()
 tree = pygame.image.load(os.path.join(sprites_dir, "tree.png")).convert_alpha()
@@ -118,7 +125,7 @@ class Player:
         self.view_bob_speed = 0.01 * self.speed / self.speed
 
         self.view_bob_offset = math.sin(pygame.time.get_ticks() * self.view_bob_speed) * bob_height
-        #self.view_bob_offset = 0
+        self.view_bob_offset = 0
 
     def collision(self, dx, dy):
         new_x = self.x + dx
@@ -177,7 +184,7 @@ def cast_walls(angle, iteration, lvlMap, x, y, z, fov, player_rot, ray_num):
 
     translucent = False
 
-    for i in range(1152):
+    for i in range(10000):
         row_index = int(end[1] / tile_size)
         col_index = int(end[0] / tile_size)
 
@@ -206,19 +213,43 @@ def cast_walls(angle, iteration, lvlMap, x, y, z, fov, player_rot, ray_num):
             if wall_type != 4 or ray_num % 2 != 0:
                 return ray_x, wall_top, wall_bottom, wall_height, end[0], end[1], dist, wall_type, translucent
 
-
-
         end[0] = x + i * cos_angle
         end[1] = y + i * sin_angle
 
 
+@nb.jit(nopython=True)
+def floor_calcs(px, py, pa):
+    floor_data = np.zeros((screen_width, screen_height, 3), dtype=np.uint8)
+    for i in range(screen_width):
+        v_rot = pa + math.radians(i / (screen_width / 60) - 30)
+        sin, cos, cos2 = math.sin(v_rot), math.cos(v_rot), math.cos(math.radians(i / (screen_width / 60) - 30))
+        for j in range(screen_height // 2, 0, -1):
+            n = (screen_height / 2) / (screen_height / 2 - j + 1)
+            x, y = px + cos * n, py + sin * n
+            xx, yy = int(x * 2 % 1 * 16), int(y * 2 % 1 * 16)
+
+            if int(x) % 2 == 0 and int(y) % 2 == 0:
+                floor_data[i, screen_height - j] = (0, 0, 0)
+            else:
+                floor_data[i, screen_height - j] = (255, 255, 255)
+
+    return floor_data
+
+
 def render_walls(x, y):
     screen.fill((200, 200, 200))
+
+    floor_data = floor_calcs(player.x, player.y, player.rotation)
+
+    floor_surface = pygame.surfarray.make_surface(floor_data)
+    screen.blit(floor_surface, (0, 0))
+
+
     it = 0
     ray_num = 0
     deg = player.ray_angle - (player.fov // 2)
     for i in range(screen_width // 2 + 1):
-        # ray_x, wall_top, wall_bottom, wall_height, end[0], end[1], dist, wall_type, translucent, alt_translucent
+        # row = ray_x, wall_top, wall_bottom, wall_height, end[0], end[1], dist, wall_type, translucent, alt_translucent
 
         row = cast_walls(math.radians(deg), it, level, x, y, player.z, player.fov, player.rotation, ray_num)
         tile_type = textures[row[7] - 1]
@@ -232,14 +263,16 @@ def render_walls(x, y):
             transWallSurf = pygame.transform.scale(wall_surf, (2, row[3]))
             pygame.draw.line(screen, color_averages[row[7] - 1], (row[0], row[1]), (row[0], row[2]), 2)
 
-        pygame.draw.line(screen, (0, 128, 0), (row[0], row[2] - 1), (row[0], screen_height), 2)
-        pygame.draw.line(screen, (3, 37, 126), (row[0], 0), (row[0], row[1]), 2)
         screen.blit(transWallSurf, (int(row[0]), int(row[1])))
 
+        # pygame.draw.line(screen, (0, 128, 0), (row[0], row[2] - 1), (row[0], screen_height), 2)
+        # pygame.draw.line(screen, (181, 211, 231), (row[0], 0), (row[0], row[1]), 2)
 
         ray_num += 1
         it += player.fov / (screen_width / 2 + 1)
         deg += player.fov / (screen_width / 2 + 1)
+
+
 
 
 def save():
@@ -262,7 +295,7 @@ player = Player()
 
 
 def main():
-    global running, canChange, draw_line, start_process
+    global running, canChange
     pygame.mouse.set_visible(False)
     pygame.mouse.set_pos(screen_width // 2, screen_height // 2)
     prev_mousePos = pygame.mouse.get_pos()[0]
