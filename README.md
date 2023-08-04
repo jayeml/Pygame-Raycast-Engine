@@ -51,4 +51,14 @@ v0.5.0
 - added view bobbing
 - added translucent walls
 - improved collision, players can now slide along walls
+
+v0.6.0
+- added settings menu
+- improved transparent walls
+- optimized
+
+v0.7.0
+- added burrito gun
+- shooting a burrito at another sprite wuill turn it into a burrito
 ```
+
