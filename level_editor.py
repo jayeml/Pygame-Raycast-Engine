@@ -47,12 +47,15 @@ def instructions():
 
 
 def map_maker():
+    global dead_squares
     editor_running = True
     tile_type = 1
     sprite_type = 0
     show_help = False
     sprite_place = 0
     mode = True
+
+    dead_squares = []
 
     pygame.display.set_caption("Level Editor")
 
@@ -105,7 +108,7 @@ def map_maker():
                     level[int(mousePos[1] / 12)][int(mousePos[0] / 12)] = 0
         if not mode and sprite_type != 0 and mouse[0] and sprite_place > 10 and mousePos[0] < 876 and mousePos[1] < 768:
             sprite_place = 0
-            sprite_list.append(Sprite(mousePos[0] / 12 * 16, mousePos[1] / 12 * 16, sprite_type))
+            sprite_list.append(Sprite(int(mousePos[0] / 12 * 16), int(mousePos[1] / 12 * 16), sprite_type))
 
         screen.fill((64, 64, 64))
         x = 0
@@ -125,7 +128,8 @@ def map_maker():
             y += 12
 
         for sp in sprite_list:
-            screen.blit(pygame.transform.scale(type2sprite[sp.type], (12, 12)), (sp.x * 12 / 16 - 6, sp.y * 12 / 16 - 6))
+            if isinstance(sp, Sprite):
+                screen.blit(pygame.transform.scale(type2sprite[sp.type], (12, 12)), (sp.x * 12 / 16 - 6, sp.y * 12 / 16 - 6))
 
         pygame.draw.rect(screen, (0, 0, 255), (144, 144, 12, 12))
 
@@ -206,9 +210,8 @@ def map_maker():
                 show_help = False
 
         if sprite_place <= 10:
-            sprite_place += 1
+            sprite_place += 10
 
         pygame.display.update()
         save()
         clock.tick(30)
-        print(mousePos)
