@@ -58,21 +58,34 @@ def load_sprites():
 
 
 @njit(fastmath=True)
+def normalize_angle(angle):
+    if angle < 0:
+        return angle + 360
+    elif angle >= 360:
+        return angle - 360
+    return angle
+
+
+@njit(fastmath=True)
 def sprite_calcs(sx, sy, px, py, pz, p_rot, lvl):
-    h_angle = (math.degrees(math.atan2(sy - py, sx - px)) % 360) - p_rot
-    screen_x = (h_angle * 19.2 + 576)
+    h_angle = math.degrees(math.atan2(sy - py, sx - px))
+    h_angle_diff = h_angle - p_rot
+
+    while h_angle_diff < -180:
+        h_angle_diff += 360
+    while h_angle_diff >= 180:
+        h_angle_diff -= 360
+
     dist = math.sqrt((sx - px) ** 2 + (sy - py) ** 2)
-    sh = (int(10000 / (dist + 1)) / 2)
+    sh = int(10000 / (dist + 1) / 2)
 
     if can_see_sprite(px, py, sx, sy, lvl, dist):
+        screen_x = int(576 + h_angle_diff * 19.2)
         st = int(768 / 2 - sh / 2)
-
         st -= sh * pz
-
         return sh, screen_x, st
 
     return None, None, None
-
 
 @njit(fastmath=True)
 def can_see_sprite(px, py, sx, sy, lvl_map, dist):

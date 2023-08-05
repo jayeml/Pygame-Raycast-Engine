@@ -54,6 +54,7 @@ def map_maker():
     show_help = False
     sprite_place = 0
     mode = True
+    removed = True
 
     dead_squares = []
 
@@ -66,6 +67,10 @@ def map_maker():
                 editor_running = False
                 save()
                 quit()
+
+            if event.type == pygame.KEYUP:
+                if event.key == pygame.K_z:
+                    removed = False
 
         mouse = pygame.mouse.get_pressed()
 
@@ -87,8 +92,12 @@ def map_maker():
                         tile_map[i][j] = 0
 
         if keys[pygame.K_c] and keys[pygame.K_LCTRL]:
-            for sp in sprite_list:
-                sprite_list.remove(sp)
+            sprite_list.clear()
+
+        if keys[pygame.K_z] and keys[pygame.K_LCTRL] and not removed:
+            if sprite_list:
+                sprite_list.pop()
+                removed = True
 
         can_place = True
         for i in range(len(tile_map)):

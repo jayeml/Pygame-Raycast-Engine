@@ -53,7 +53,7 @@ for i in gun_list:
         image_path = os.path.join(gun_dir, i)
         burrito_charge.append(pygame.transform.scale(pygame.image.load(image_path).convert_alpha(), (400, 276)))
 
-dude = pygame.image.load(os.path.join(sprites_dir, "ufo dude.png")).convert_alpha()
+dude = pygame.image.load(os.path.join(sprites_dir, "dude.png")).convert_alpha()
 tree = pygame.image.load(os.path.join(sprites_dir, "tree.png")).convert_alpha()
 burrito = pygame.image.load(os.path.join(sprites_dir, "burrito.png")).convert_alpha()
 
@@ -258,8 +258,8 @@ def cast_walls(angle, iteration, lvl_map, dead_map, x, y, z, fov, player_rot, ra
 
 
 def render_walls():
-    screen.fill((100, 100, 100))
-    pygame.draw.rect(screen, (100, 210, 255), (0, 0, screen_width, screen_height/2))
+    screen.fill((100, 210, 255))
+    pygame.draw.rect(screen, (100, 100, 100), (0, screen_height/2 + -player.z*10, screen_width, screen_height))
     x = player.x
     y = player.y
 
@@ -288,7 +288,7 @@ def render_walls():
 
 def save():
     global level, dead_squares
-    with open('Map', 'w') as f:
+    with open('map', 'w') as f:
         for i in tile_map:
             f.write(''.join(map(str, i)) + '\n')
         level = typed.List(tile_map)
@@ -331,18 +331,21 @@ def main():
 
     while running:
 
+        mouseClick = pygame.mouse.get_pressed()
+
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
                 quit()
 
             if event.type == pygame.MOUSEBUTTONDOWN:
-                start_ticks = current_tick
-                player.speed = 2
-                is_clicking = True
+                if event.button == 1:
+                    start_ticks = current_tick
+                    player.speed = 2
+                    is_clicking = True
             if event.type == pygame.MOUSEBUTTONUP:
-                is_clicking = False
-                if not projectiles:
+                if event.button == 1:
+                    is_clicking = False
                     burrito_launcher.when_launched(player, current_tick, start_ticks, sprite_list, projectiles)
 
             if event.type == pygame.KEYDOWN:
@@ -356,9 +359,8 @@ def main():
                     if settings():
                         return
 
-        keys = pygame.key.get_pressed()
-
         player.moved = False
+        keys = pygame.key.get_pressed()
 
         if not player.you_win:
 
@@ -367,8 +369,8 @@ def main():
             accumulated_change += change
             player.ray_angle += accumulated_change / player.mouse_sensitivity
             player.rotation -= accumulated_change / player.mouse_sensitivity
-            player.ray_angle %= 360
-            player.rotation %= 360
+
+
             pygame.mouse.set_pos(screen_width // 2, screen_height // 2)
 
             if change != 0:
@@ -416,9 +418,6 @@ def main():
 
         render_walls()
         sprite.render_sprites(sprite_list, player, screen, type2sprite, level, projectiles, tile_map)
-
-        for bullet in projectiles:
-            bullet.collision(sprite_list)
 
         burrito_launcher.show_gun(is_clicking, int(current_tick - start_ticks), screen)
 

@@ -2,6 +2,7 @@ from main import *
 from Widgets.label import Label
 from Widgets.slider import Slider
 from level_editor import map_maker
+from guns import Projectile
 
 
 def menu():
@@ -46,6 +47,8 @@ def settings():
     background = pygame.transform.smoothscale(background, surf_size)
 
     menu_button = Button((326, 587, 500, 75), text="Menu", hover_color=(150, 150, 150))
+    resume_button = Button((326, 487, 500, 75), text="Resume", hover_color=(150, 150, 150))
+
     mouse_sens = Slider(20, 101, 100, 900, 8, horizontal=True, show_value=True, circle_color=(100, 100, 255),
                         text="Mouse Sensitivity", min_value=1, radius=10)
 
@@ -65,8 +68,13 @@ def settings():
         screen.blit(background, (0, 0))
 
         if menu_button.button(screen):
-            pygame.mouse.set_visible(True)
+            save()
             return True
+
+        if resume_button.button(screen):
+            pygame.mouse.set_visible(False)
+            save()
+            return False
 
         player.mouse_sensitivity = mouse_sens.slide(screen, player.mouse_sensitivity)
         player.bob_height = (bob_height.slide(screen, int(player.bob_height*100))) / 100

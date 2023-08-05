@@ -28,14 +28,13 @@ class BurritoLauncher(Gun):
         super().__init__(50, 100, image, animation, 2)
 
     def when_launched(self, player, current_tick, start_tick, sp_list, p_list):
-        self.launch_speed += int(current_tick - start_tick) * 2
+        self.launch_speed += int(current_tick - start_tick)
         self.range += int(current_tick - start_tick) * 2
         self.damage += int(current_tick - start_tick) * 2
         self.launch(player.x + .0001, player.y + .0001, math.radians(player.ray_angle), sp_list, p_list)
         self.launch_speed = 2
         self.range = 50
         self.damage = 50
-        player.speed = 5
 
 
 # noinspection SpellCheckingInspection
@@ -51,27 +50,25 @@ class Projectile:
         self.hitbox = pygame.Rect(self.x, self.y, 4, 4)
 
     def update(self, sprite_list, projectiles, tile_map):
-        self.x += self.speed * math.cos(self.angle)
-        self.y += self.speed * math.sin(self.angle)
-        self.hitbox = pygame.Rect(self.x, self.y, 4, 4)
-        self.range -= 1
-        if self.range == 0:
-            sprite_list.remove(self)
-            projectiles.remove(self)
-        try:
+        for i in range(self.speed):
+            self.x += i * math.cos(self.angle)
+            self.y += i * math.sin(self.angle)
+            self.hitbox = pygame.Rect(self.x, self.y, 4, 4)
+            if self.range == 0:
+                sprite_list.remove(self)
+                projectiles.remove(self)
+                break
+
             if tile_map[int(self.y / 16)][int(self.x / 16)] > 0:
                 sprite_list.remove(self)
                 projectiles.remove(self)
+                break
 
-        except IndexError:
-            sprite_list.remove(self)
-            projectiles.remove(self)
 
-        except ValueError:
-            pass
 
-    def collision(self, sprite_list):
-        for sp in sprite_list:
-            if isinstance(sp, Sprite):
-                if sp.hitbox.colliderect(self.hitbox):
-                    sp.type = 3
+            for sp in sprite_list:
+                if isinstance(sp, Sprite):
+                    if sp.hitbox.colliderect(self.hitbox):
+                        sp.type = 3
+
+        self.range -= 1
