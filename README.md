@@ -60,5 +60,11 @@ v0.6.0
 v0.7.0
 - added burrito gun
 - shooting a burrito at another sprite wuill turn it into a burrito
+
+v0.7.1
+- improved collision between sprites and projectiles
+- fixed all know sprite rendering bugs
+- can now press ctrl + z in the level editor to undo last sprite placement
+- made clearing sprites in the level editor work after only pressing it once
 ```
 
