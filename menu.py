@@ -2,12 +2,17 @@ from main import *
 from Widgets.label import Label
 from Widgets.slider import Slider
 from level_editor import map_maker
-from guns import Projectile
 
 
 def menu():
     pygame.display.set_caption("Raycast Engine (Move Mouse)")
     title = Label("Raycast Engine", x=screen_width//2, y=150, font=title_font, center=True)
+
+    play = Button(((screen_width // 2 - 100), (screen_height // 2 - 50), 200, 50), text='Start',
+                  hover_color=(64, 64, 64), scale_on_hover=True, scale=15)
+    edit = Button(((screen_width // 2 - 100), (screen_height // 2 + 50), 200, 50), text='Level Editor',
+                  hover_color=(64, 64, 64), scale_on_hover=True, scale=15)
+
     while True:
         screen.fill((3, 37, 126))
         render_walls()
@@ -46,8 +51,8 @@ def settings():
     background = pygame.transform.smoothscale(current_screen, scale_size)
     background = pygame.transform.smoothscale(background, surf_size)
 
-    menu_button = Button((326, 587, 500, 75), text="Menu", hover_color=(150, 150, 150))
-    resume_button = Button((326, 487, 500, 75), text="Resume", hover_color=(150, 150, 150))
+    menu_button = Button((326, 587, 500, 75), text="Menu", hover_color=(64, 64, 64))
+    resume_button = Button((326, 437, 500, 75), text="Resume", hover_color=(64, 64, 64))
 
     mouse_sens = Slider(20, 101, 100, 900, 8, horizontal=True, show_value=True, circle_color=(100, 100, 255),
                         text="Mouse Sensitivity", min_value=1, radius=10)

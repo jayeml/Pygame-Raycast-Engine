@@ -45,6 +45,8 @@ def render_sprites(sp_list, player, screen, type2sprite, level, projectiles, til
 
         if sp_info[0] is not None:
             screen.blit(pygame.transform.scale(type2sprite[sp.type], (sp_info[0], sp_info[0])), (sp_info[1], sp_info[2]))
+            if 576 - sp_info[0] * 2 < sp_info[3] < 576 + sp_info[0] * 2:
+                player.can_shotgun.append(sp)
 
 
 def load_sprites():
@@ -83,9 +85,9 @@ def sprite_calcs(sx, sy, px, py, pz, p_rot, lvl):
         screen_x = int(576 + h_angle_diff * 19.2)
         st = int(768 / 2 - sh / 2)
         st -= sh * pz
-        return sh, screen_x, st
+        return sh, screen_x, st, screen_x
 
-    return None, None, None
+    return None, None, None, None
 
 @njit(fastmath=True)
 def can_see_sprite(px, py, sx, sy, lvl_map, dist):

@@ -18,7 +18,3 @@ class Label:
             window.blit(text, text_rect)
         else:
             window.blit(text, (self.x, self.y))
-
-
-
-

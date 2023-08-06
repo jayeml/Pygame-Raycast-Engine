@@ -4,18 +4,13 @@ from sprite import Sprite
 
 
 class Gun:
-    def __init__(self, damage, ammo_range, image, animation, launch_speed):
+    def __init__(self, damage, ammo_range, animation, image, launch_speed):
         self.damage = damage
         self.range = ammo_range
         self.image = image
         self.launch_speed = launch_speed
         self.animation = animation
         self.ani_len = len(animation)
-
-    def show_gun(self, hasClicked, ticks, screen):
-        screen.blit(self.image, (650, 450))
-        if hasClicked:
-            screen.blit(self.animation[ticks % self.ani_len], (633, 450))
 
     def launch(self, x, y, angle, sprite_list, projectile_list):
         new_proj = Projectile(x, y, angle, 3, self.range, self.launch_speed)
@@ -25,19 +20,61 @@ class Gun:
 
 class BurritoLauncher(Gun):
     def __init__(self, image, animation):
-        super().__init__(50, 100, image, animation, 2)
+        super().__init__(100, 75, animation, image, 2)
 
-    def when_launched(self, player, current_tick, start_tick, sp_list, p_list):
-        self.launch_speed += int(current_tick - start_tick)
+    def when_activated(self, player, current_tick, start_tick, sp_list, p_list):
+        radians_angle = math.radians(player.ray_angle)
+        self.launch_speed += int(current_tick - start_tick)//2
         self.range += int(current_tick - start_tick) * 2
         self.damage += int(current_tick - start_tick) * 2
-        self.launch(player.x + .0001, player.y + .0001, math.radians(player.ray_angle), sp_list, p_list)
+        self.launch(player.x + 10 * math.cos(radians_angle), player.y + 10 * math.sin(radians_angle), radians_angle, sp_list, p_list)
         self.launch_speed = 2
         self.range = 50
         self.damage = 50
 
+    def show_gun(self, is_clicking, ticks, screen):
+        screen.blit(self.image, (650, 450))
+        if is_clicking:
+            screen.blit(self.animation[ticks % self.ani_len], (633, 450))
 
-# noinspection SpellCheckingInspection
+
+class BurritoShotgun(Gun):
+    def __init__(self, image, image2, animation):
+        super().__init__(100, 75, animation, image, 2)
+        self.frame_length = 2
+        self.current_frame = 0
+        self.active = False
+        self.cooldown = 60
+        self.image2 = image2
+
+    def show_gun(self, screen):
+        screen.blit(self.image, (468, 395))
+        if self.cooldown <= 0:
+            screen.blit(self.image2, (468, 395))
+
+    def FLAMINGINFERNOBLAZE111111(self, player):
+        for sp in player.can_shotgun:
+            if isinstance(sp, Sprite):
+                if sp.dist <= self.range:
+                    sp.type = 3
+
+    def when_launched(self, screen):
+
+        screen.blit(self.animation[self.current_frame], (468, 395))
+
+        if self.frame_length == 0:
+            self.current_frame += 1
+            self.frame_length = 2
+
+        if self.current_frame > self.ani_len - 1:
+            self.current_frame = 0
+            return False
+
+        self.frame_length -= 1
+
+        return True
+
+
 class Projectile:
     def __init__(self, x, y, angle, type, projectile_range, speed):
         self.x = x
@@ -63,8 +100,6 @@ class Projectile:
                 sprite_list.remove(self)
                 projectiles.remove(self)
                 break
-
-
 
             for sp in sprite_list:
                 if isinstance(sp, Sprite):
