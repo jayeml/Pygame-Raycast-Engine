@@ -66,5 +66,9 @@ v0.7.1
 - fixed all know sprite rendering bugs
 - can now press ctrl + z in the level editor to undo last sprite placement
 - made clearing sprites in the level editor work after only pressing it once
+
+v0.7.2
+- added shotgun
+- added healthbar
 ```
 
