@@ -70,5 +70,8 @@ v0.7.1
 v0.7.2
 - added shotgun
 - added healthbar
+
+v0.8.0
+- I did some stuff
 ```
 
