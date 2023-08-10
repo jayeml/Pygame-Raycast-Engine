@@ -13,24 +13,24 @@ class Gun:
         self.ani_len = len(animation)
 
     def launch(self, x, y, angle, sprite_list, projectile_list):
-        new_proj = Projectile(x, y, angle, 3, self.range, self.launch_speed)
+        new_proj = Projectile(x, y, angle, 3, self.range, self.launch_speed, self.damage)
         sprite_list.append(new_proj)
         projectile_list.append(new_proj)
 
 
 class BurritoLauncher(Gun):
     def __init__(self, image, animation):
-        super().__init__(100, 75, animation, image, 2)
+        super().__init__(5, 75, animation, image, 2)
 
     def when_activated(self, player, current_tick, start_tick, sp_list, p_list):
         radians_angle = math.radians(player.ray_angle)
         self.launch_speed += int(current_tick - start_tick)//2
         self.range += int(current_tick - start_tick) * 2
-        self.damage += int(current_tick - start_tick) * 2
+        self.damage += int(current_tick - start_tick)
         self.launch(player.x + 10 * math.cos(radians_angle), player.y + 10 * math.sin(radians_angle), radians_angle, sp_list, p_list)
+        self.damage = 5
         self.launch_speed = 2
         self.range = 50
-        self.damage = 50
 
     def show_gun(self, is_clicking, ticks, screen):
         screen.blit(self.image, (650, 450))
@@ -40,7 +40,7 @@ class BurritoLauncher(Gun):
 
 class BurritoShotgun(Gun):
     def __init__(self, image, image2, animation):
-        super().__init__(100, 75, animation, image, 2)
+        super().__init__(50, 75, animation, image, 2)
         self.frame_length = 2
         self.current_frame = 0
         self.active = False
@@ -56,7 +56,9 @@ class BurritoShotgun(Gun):
         for sp in player.can_shotgun:
             if isinstance(sp, Sprite):
                 if sp.dist <= self.range:
-                    sp.type = 3
+                    sp.health -= self.damage
+                    if sp.health <= 0:
+                        sp.type = 3
 
     def when_launched(self, screen):
 
@@ -76,17 +78,18 @@ class BurritoShotgun(Gun):
 
 
 class Projectile:
-    def __init__(self, x, y, angle, type, projectile_range, speed):
+    def __init__(self, x, y, angle, type, projectile_range, speed, damage):
         self.x = x
         self.y = y
         self.angle = angle
         self.type = type
         self.range = projectile_range
         self.speed = speed
+        self.damage = damage
         self.dist = 0
         self.hitbox = pygame.Rect(self.x, self.y, 4, 4)
 
-    def update(self, sprite_list, projectiles, tile_map):
+    def update(self, sprite_list, projectiles, tile_map, _):
         for i in range(self.speed):
             self.x += i * math.cos(self.angle)
             self.y += i * math.sin(self.angle)
@@ -104,6 +107,8 @@ class Projectile:
             for sp in sprite_list:
                 if isinstance(sp, Sprite):
                     if sp.hitbox.colliderect(self.hitbox):
-                        sp.type = 3
+                        sp.health -= self.damage
+                        if sp.health <= 0:
+                            sp.type = 3
 
         self.range -= 1

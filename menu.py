@@ -44,12 +44,7 @@ def menu():
 def settings():
     current_screen = pygame.display.get_surface().copy()
 
-    scale = 1.0 / float(5)
-    surf_size = current_screen.get_size()
-
-    scale_size = (int(surf_size[0] * scale), int(surf_size[1] * scale))
-    background = pygame.transform.smoothscale(current_screen, scale_size)
-    background = pygame.transform.smoothscale(background, surf_size)
+    background = pygame.transform.gaussian_blur(current_screen, 10)
 
     menu_button = Button((326, 587, 500, 75), text="Menu", hover_color=(64, 64, 64))
     resume_button = Button((326, 437, 500, 75), text="Resume", hover_color=(64, 64, 64))

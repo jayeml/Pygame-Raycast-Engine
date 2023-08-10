@@ -138,7 +138,7 @@ def map_maker():
 
         for sp in sprite_list:
             if isinstance(sp, Sprite):
-                screen.blit(pygame.transform.scale(type2sprite[sp.type], (12, 12)), (sp.x * 12 / 16 - 6, sp.y * 12 / 16 - 6))
+                screen.blit(pygame.transform.scale(type2sprite[math.floor(sp.type)], (12, 12)), (sp.x * 12 / 16 - 6, sp.y * 12 / 16 - 6))
 
         pygame.draw.rect(screen, (0, 0, 255), (144, 144, 12, 12))
 
@@ -223,4 +223,3 @@ def map_maker():
 
         pygame.display.update()
         save()
-        clock.tick(30)

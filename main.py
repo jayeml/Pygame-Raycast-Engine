@@ -72,12 +72,19 @@ for i in shotgun_list:
 
 
 dude = pygame.image.load(os.path.join(sprites_dir, "dude.png")).convert_alpha()
+dude_back = pygame.image.load(os.path.join(sprites_dir, "dude_back.png")).convert_alpha()
+dude_side = pygame.image.load(os.path.join(sprites_dir, "dude_side.png")).convert_alpha()
+dude_side2 = pygame.image.load(os.path.join(sprites_dir, "dude_side2.png")).convert_alpha()
+
 tree = pygame.image.load(os.path.join(sprites_dir, "tree.png")).convert_alpha()
 burrito = pygame.image.load(os.path.join(sprites_dir, "burrito.png")).convert_alpha()
 
 
 type2sprite = {
         1: dude,
+        1.1: dude_back,
+        1.2: dude_side,
+        1.3: dude_side2,
         2: tree,
         3: burrito
     }
@@ -170,6 +177,7 @@ class Player:
         self.moved = False
         self.health = 100
         self.can_shotgun = []
+        self.breaking = False
 
     def update(self):
 
@@ -186,6 +194,7 @@ class Player:
             player.you_lose = True
 
         self.can_shotgun.clear()
+        self.breaking = False
 
     def ui(self):
         pygame.draw.rect(screen, (150, 150, 150), (10, 683, 300, 75))
@@ -203,14 +212,16 @@ class Player:
             bar_x += 2.8
 
     def collision(self, dx, dy):
+        global level
+
         new_x = self.x + dx
         new_y = self.y + dy
 
         final_x = self.x
         final_y = self.y
 
-        row_index, col_index = get_index(self.y, self.x)
-        new_row, new_col = get_index(new_y, new_x)
+        row_index, col_index = sprite.get_index(self.y, self.x)
+        new_row, new_col = sprite.get_index(new_y, new_x)
 
         if tile_map[row_index][new_col] == 0:
             final_x += dx
@@ -226,6 +237,10 @@ class Player:
         if tile_map[new_row][new_col] > 0:
             self.speed = 4
 
+        if self.breaking:
+            tile_map[new_row][new_col] = 0
+            level = typed.List(tile_map)
+
         return final_x, final_y
 
 
@@ -234,12 +249,6 @@ def random_color():
     g = randint(0, 255)
     b = randint(0, 255)
     return r, g, b
-
-
-def get_index(x, y):
-    row_index = int(x / tile_size)
-    col_index = int(y / tile_size)
-    return row_index, col_index
 
 
 win = Button(((screen_width // 2 - 100), (screen_height // 2 + 65), 200, 50), text="WINNER!!!", hover_color=random_color())
@@ -372,6 +381,16 @@ def main():
         render_walls()
         sprite.render_sprites(sprite_list, player, screen, type2sprite, level, projectiles, tile_map)
 
+        if current_gun == 0:
+            burrito_launcher.show_gun(is_clicking, int(current_tick - start_ticks), screen)
+        else:
+            burrito_shotgun.show_gun(screen)
+            burrito_shotgun.cooldown -= 1
+            if burrito_shotgun.active:
+                burrito_shotgun.active = burrito_shotgun.when_launched(screen)
+
+        player.ui()
+
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
@@ -400,6 +419,7 @@ def main():
                     player.isSprinting = 30
                     player.speed = 8
                 if event.key == pygame.K_ESCAPE:
+                    save()
                     pygame.mouse.set_visible(True)
                     from menu import settings
                     if settings():
@@ -419,6 +439,9 @@ def main():
             player.ray_angle += accumulated_change / player.mouse_sensitivity
             player.rotation -= accumulated_change / player.mouse_sensitivity
 
+            player.rotation %= 360
+            player.ray_angle %= 360
+
             pygame.mouse.set_pos(screen_width // 2, screen_height // 2)
 
             if change != 0:
@@ -433,6 +456,8 @@ def main():
             player.oldx = player.x
             player.oldy = player.y
 
+            if keys[pygame.K_SPACE]:
+                player.breaking = True
             if keys[pygame.K_w]:
                 player.x, player.y = player.collision(-dx, -dy)
             if keys[pygame.K_s]:
@@ -441,8 +466,6 @@ def main():
                 player.x, player.y = player.collision(-side_dx, -side_dy)
             if keys[pygame.K_d]:
                 player.x, player.y = player.collision(side_dx, side_dy)
-            if keys[pygame.K_SPACE]:
-                player.z -= .5
             if keys[pygame.K_x]:
                 save()
                 pygame.mouse.set_visible(True)
@@ -458,24 +481,12 @@ def main():
                 player.x = player.oldx
                 player.y = player.oldy
 
-            player.update()
-
             if player.moved:
                 player.z += player.view_bob_offset
                 if player.z > 0:
                     player.z = 0
             elif player.z < 0:
                 player.z += .1
-
-            if current_gun == 0:
-                burrito_launcher.show_gun(is_clicking, int(current_tick - start_ticks), screen)
-            else:
-                burrito_shotgun.show_gun(screen)
-                burrito_shotgun.cooldown -= 1
-                if burrito_shotgun.active:
-                    burrito_shotgun.active = burrito_shotgun.when_launched(screen)
-
-            player.ui()
 
         if player.you_win:
             pygame.mouse.set_visible(True)
@@ -502,6 +513,8 @@ def main():
 
         pygame.display.set_caption("Fps: " + str(int(clock.get_fps())) + "/60")
         pygame.display.update()
+
+        player.update()
 
         canChange += 1
         current_tick += .1
