@@ -1,49 +1,26 @@
 from main import *
 from sprite import Sprite
-from Widgets.label import Label
 
+set_walls = []
 
-help = Button((1098, 714, 28, 28), text='?', color=(255, 0, 0), press_color=(255, 0, 0))
-done = Button(((screen_width//2 - 100), (screen_height//2 + 100), 200, 50), text='Done', color=(0, 255, 0),
-              hover_color=(0, 155, 0))
+for i in range(16):
+    if i % 2 == 0:
+        x = 1671
+    else:
+        x = 1796
 
-set1 = Button((903, 20, 100, 100), color=(150, 150, 150), hover_color=(80, 80, 80))
-set2 = Button((1028, 20, 100, 100), color=(150, 150, 150), hover_color=(80, 80, 80))
-set3 = Button((903, 145, 100, 100), color=(150, 150, 150), hover_color=(80, 80, 80))
-set4 = Button((1028, 145, 100, 100), color=(150, 150, 150), hover_color=(80, 80, 80))
-set5 = Button((903, 270, 100, 100), color=(150, 150, 150), hover_color=(80, 80, 80))
-set6 = Button((1028, 270, 100, 100), color=(150, 150, 150), hover_color=(80, 80, 80))
-set7 = Button((903, 395, 100, 100), color=(150, 150, 150), hover_color=(80, 80, 80))
-set8 = Button((1028, 395, 100, 100), color=(150, 150, 150), hover_color=(80, 80, 80))
-set9 = Button((966, 520, 100, 100), color=(150, 150, 150), hover_color=(80, 80, 80))
+    y = 20 + (125 * (i//2))
 
-set_walls = [set1, set2, set3, set4, set5, set6, set7, set8]
+    set_walls.append(Button((x, y, 100, 100), color=(150, 150, 150), hover_color=(80, 80, 80)))
 
-walls = Button((905, 650, 100, 50), text="walls", color=(150, 150, 150), hover_color=(80, 80, 80))
-npcs = Button((1030, 650, 100, 50), text="npcs", color=(150, 150, 150), hover_color=(80, 80, 80))
+walls = Button((1671, 1015, 100, 50), text="walls", color=(150, 150, 150), hover_color=(80, 80, 80))
+npcs = Button((1796, 1015, 100, 50), text="npcs", color=(150, 150, 150), hover_color=(80, 80, 80))
 
-setdude = Button((903, 20, 100, 100), color=(150, 150, 150), hover_color=(80, 80, 80))
-settree = Button((1028, 20, 100, 100), color=(150, 150, 150), hover_color=(80, 80, 80))
-setburrito = Button((903, 145, 100, 100), color=(150, 150, 150), hover_color=(80, 80, 80))
+setdude = Button((1671, 20, 100, 100), color=(150, 150, 150), hover_color=(80, 80, 80))
+settree = Button((1796, 20, 100, 100), color=(150, 150, 150), hover_color=(80, 80, 80))
+setburrito = Button((1671, 145, 100, 100), color=(150, 150, 150), hover_color=(80, 80, 80))
 
 set_sprite = [setdude, settree, setburrito]
-
-
-def instructions():
-    pygame.draw.rect(screen, (255, 236, 150), (32, 32, 1088, 704))
-    one = Label("1 - 9 Set Draw Mode", x=64, y=64)
-    c = Label("C - Clear board", x=64, y=96)
-    c_ctrl = Label("Ctrl + C - Clear sprites", x=64, y=128)
-    esc = Label("Esc - Back to the menu", x=64, y=160)
-    lc = Label("Left Click - Draw", x=64, y=192)
-    rc = Label("Right Click - Erase", x=64, y=224)
-
-    one.show(screen)
-    c.show(screen)
-    c_ctrl.show(screen)
-    esc.show(screen)
-    lc.show(screen)
-    rc.show(screen)
 
 
 def map_maker():
@@ -51,7 +28,6 @@ def map_maker():
     editor_running = True
     tile_type = 1
     sprite_type = 0
-    show_help = False
     sprite_place = 0
     mode = True
     removed = True
@@ -99,25 +75,16 @@ def map_maker():
                 sprite_list.pop()
                 removed = True
 
-        can_place = True
-        for i in range(len(tile_map)):
-            for j in range(len(tile_map[0])):
-                if level[i][j] == 9:
-                    can_place = False
         # Fill in tile
         if mode:
             if len(tile_map) > mousePos[1] // 12 > 0 and len(tile_map[0]) > mousePos[0] // 12 > 0:
                 if mouse[0]:
-                    if tile_type != 9:
-                        level[int(mousePos[1] / 12)][int(mousePos[0] / 12)] = tile_type
-                    else:
-                        if can_place:
-                            level[int(mousePos[1] / 12)][int(mousePos[0] / 12)] = 9
+                    level[int(mousePos[1] / 12)][int(mousePos[0] / 12)] = tile_type
                 if mouse[2]:
                     level[int(mousePos[1] / 12)][int(mousePos[0] / 12)] = 0
-        if not mode and sprite_type != 0 and mouse[0] and sprite_place > 10 and mousePos[0] < 876 and mousePos[1] < 768:
+        if not mode and sprite_type != 0 and mouse[0] and mousePos[0] < 1644 and mousePos[1] < screen_height:
             sprite_place = 0
-            sprite_list.append(Sprite(int(mousePos[0] / 12 * 16), int(mousePos[1] / 12 * 16), sprite_type))
+            sprite_list.append(Sprite(int(mousePos[0] / 12 * 8), int(mousePos[1] / 12 * 8), sprite_type, 180))
 
         screen.fill((64, 64, 64))
         x = 0
@@ -138,14 +105,11 @@ def map_maker():
 
         for sp in sprite_list:
             if isinstance(sp, Sprite):
-                screen.blit(pygame.transform.scale(type2sprite[math.floor(sp.type)], (12, 12)), (sp.x * 12 / 16 - 6, sp.y * 12 / 16 - 6))
+                screen.blit(pygame.transform.scale(type2sprite[math.floor(sp.type)], (12, 12)), (sp.x * 12 / 8 - 6, sp.y * 12 / 8  - 6))
 
         pygame.draw.rect(screen, (0, 0, 255), (144, 144, 12, 12))
 
-        pygame.draw.rect(screen, (40, 40, 40), (876, 0, 276, 768))
-
-        if help.button(screen):
-            show_help = True
+        pygame.draw.rect(screen, (40, 40, 40), (1644, 0, 300, screen_height))
 
         if mode:
             for wall in set_walls:
@@ -153,13 +117,6 @@ def map_maker():
                     tile_type = set_walls.index(wall) + 1
                 if tile_type == set_walls.index(wall) + 1:
                     wall.show_toggled(screen, (20, 20, 20))
-
-            if set9.button(screen):
-                tile_type = 9
-            if tile_type == 9:
-                set9.show_toggled(screen, (20, 20, 20))
-            if not can_place:
-                pygame.draw.rect(screen, (150, 0, 0), (966, 520, 100, 100))
 
         else:
             for sprite in set_sprite:
@@ -175,51 +132,31 @@ def map_maker():
             mode = False
 
         if mode:
-            ui_1 = pygame.transform.scale(textures[0], (80, 80))
-            screen.blit(ui_1, (913, 30))
 
-            ui_2 = pygame.transform.scale(textures[1], (80, 80))
-            screen.blit(ui_2, (1038, 30))
+            for i in range(16):
+                if i % 2 == 0:
+                    x = 1681
+                else:
+                    x = 1806
 
-            ui_3 = pygame.transform.scale(textures[2], (80, 80))
-            screen.blit(ui_3, (913, 155))
+                y = 30 + (125 * (i // 2))
 
-            ui_4 = pygame.transform.scale(textures[3], (80, 80))
-            screen.blit(ui_4, (1038, 155))
-
-            ui_5 = pygame.transform.scale(textures[4], (80, 80))
-            screen.blit(ui_5, (913, 280))
-
-            ui_6 = pygame.transform.scale(textures[5], (80, 80))
-            screen.blit(ui_6, (1038, 280))
-
-            ui_7 = pygame.transform.scale(textures[6], (80, 80))
-            screen.blit(ui_7, (913, 405))
-
-            ui_8 = pygame.transform.scale(textures[7], (80, 80))
-            screen.blit(ui_8, (1038, 405))
-
-            ui_9 = pygame.transform.scale(textures[8], (80, 80))
-            screen.blit(ui_9, (976, 530))
+                image = pygame.transform.scale(textures[i], (80, 80))
+                screen.blit(image, (x, y))
 
         else:
             ui_1 = pygame.transform.scale(dude, (80, 80))
-            screen.blit(ui_1, (913, 30))
+            screen.blit(ui_1, (1681, 30))
 
             ui_2 = pygame.transform.scale(tree, (80, 80))
-            screen.blit(ui_2, (1038, 30))
+            screen.blit(ui_2, (1806, 30))
 
             ui_3 = pygame.transform.scale(burrito, (80, 80))
-            screen.blit(ui_3, (913, 155))
-
-        if show_help:
-            instructions()
-
-            if done.button(screen):
-                show_help = False
+            screen.blit(ui_3, (1681, 155))
 
         if sprite_place <= 10:
             sprite_place += 10
 
         pygame.display.update()
+        clock.tick(60)
         save()

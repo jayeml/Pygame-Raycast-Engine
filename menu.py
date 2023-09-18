@@ -6,12 +6,14 @@ from level_editor import map_maker
 
 def menu():
     pygame.display.set_caption("Raycast Engine (Move Mouse)")
-    title = Label("Raycast Engine", x=screen_width//2, y=150, font=title_font, center=True)
+    title = Label("Raycast Engine", x=screen_width // 2, y=150, font=title_font, center=True)
 
     play = Button(((screen_width // 2 - 100), (screen_height // 2 - 50), 200, 50), text='Start',
                   hover_color=(64, 64, 64), scale_on_hover=True, scale=15)
     edit = Button(((screen_width // 2 - 100), (screen_height // 2 + 50), 200, 50), text='Level Editor',
                   hover_color=(64, 64, 64), scale_on_hover=True, scale=15)
+    leave = Button(((screen_width // 2 - 100), (screen_height // 2 + 150), 200, 50), text='Quit',
+                   hover_color=(255, 0, 0), scale_on_hover=True, scale=15)
 
     while True:
         screen.fill((3, 37, 126))
@@ -34,9 +36,12 @@ def menu():
             player.ray_angle = 270
             main()
         if edit.button(screen):
-            player.x = 192
-            player.y = 192
+            player.x = 96
+            player.y = 96
             map_maker()
+
+        if leave.button(screen):
+            quit()
 
         pygame.display.update()
 
@@ -46,13 +51,13 @@ def settings():
 
     background = pygame.transform.gaussian_blur(current_screen, 10)
 
-    menu_button = Button((326, 587, 500, 75), text="Menu", hover_color=(64, 64, 64))
-    resume_button = Button((326, 437, 500, 75), text="Resume", hover_color=(64, 64, 64))
+    menu_button = Button((screen_width//2 - 250, 902, 500, 75), text="Menu", hover_color=(64, 64, 64))
+    resume_button = Button((screen_width//2 - 250, 752, 500, 75), text="Resume", hover_color=(64, 64, 64))
 
-    mouse_sens = Slider(20, 101, 100, 900, 8, horizontal=True, show_value=True, circle_color=(100, 100, 255),
+    mouse_sens = Slider(20, screen_width//2-450, 100, 900, 8, horizontal=True, show_value=True, circle_color=(100, 100, 255),
                         text="Mouse Sensitivity", min_value=1, radius=10)
 
-    bob_height = Slider(10, 101, 200, 900, 8, horizontal=True, show_value=True, circle_color=(100, 100, 255),
+    bob_height = Slider(10, screen_width//2-450, 200, 900, 8, horizontal=True, show_value=True, circle_color=(100, 100, 255),
                         text="View bobbing amplifier", min_value=0, radius=10)
 
     while True:
@@ -77,9 +82,9 @@ def settings():
             return False
 
         player.mouse_sensitivity = mouse_sens.slide(screen, player.mouse_sensitivity)
-        player.bob_height = (bob_height.slide(screen, int(player.bob_height*100))) / 100
+        player.bob_height = (bob_height.slide(screen, int(player.bob_height * 100))) / 100
 
-        pygame.display.flip()
+        pygame.display.update()
 
         save_json = {
             "mouse_sensitivity": player.mouse_sensitivity,

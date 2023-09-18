@@ -2,7 +2,10 @@ import pygame
 import math
 import os
 import json
+import guns
 import sprite
+import pygame.freetype
+from copy import deepcopy
 from guns import BurritoLauncher, BurritoShotgun
 from numba import njit, typed
 from random import randint
@@ -10,17 +13,17 @@ from Widgets.button import Button
 
 pygame.init()
 
-screen_width = 1152
-screen_height = 768
+screen_width = 1920
+screen_height = 1080
 halfheight = screen_height // 2
-tile_size = 16
+tile_size = 8
 screen = pygame.display.set_mode((screen_width, screen_height), pygame.HWSURFACE | pygame.DOUBLEBUF)
 
 clock = pygame.time.Clock()
 
 font = pygame.font.SysFont('arial', 30)
 title_font = pygame.font.SysFont('arial', 100)
-
+damage_font = pygame.freetype.Font('Assets\\Impact.ttf')
 canChange = 0
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -50,25 +53,25 @@ color_averages = []
 for i in wall_list:
     if ".png" in i:
         image_path = os.path.join(walls_dir, i)
-        textures.append(pygame.transform.scale(pygame.image.load(image_path).convert(), (tile_size, tile_size)))
+        textures.append(pygame.image.load(image_path).convert())
 
 
 launcher_charge = []
-burrito_launcher = pygame.transform.scale(pygame.image.load(os.path.join(launcher_dir, "gun.png")).convert_alpha(), (470, 318))
+burrito_launcher = pygame.transform.scale(pygame.image.load(os.path.join(launcher_dir, "gun.png")).convert_alpha(), (600, 400))
 
 for i in launcher_list:
     if "charge" in i:
         image_path = os.path.join(launcher_dir, i)
-        launcher_charge.append(pygame.transform.scale(pygame.image.load(image_path).convert_alpha(), (400, 276)))
+        launcher_charge.append(pygame.transform.scale(pygame.image.load(image_path).convert_alpha(), (480, 320)))
 
 shotgun_fire = []
-burrito_shotgun = pygame.transform.scale(pygame.image.load(os.path.join(shotgun_dir, "gun.png")).convert_alpha(), (255, 375))
-bs_ammo = pygame.transform.scale(pygame.image.load(os.path.join(shotgun_dir, "ammo.png")).convert_alpha(), (255, 375))
+burrito_shotgun = pygame.transform.scale(pygame.image.load(os.path.join(shotgun_dir, "gun.png")).convert_alpha(), (306, 450))
+bs_ammo = pygame.transform.scale(pygame.image.load(os.path.join(shotgun_dir, "ammo.png")).convert_alpha(), (306, 450))
 
 for i in shotgun_list:
     if "fire" in i:
         image_path = os.path.join(shotgun_dir, i)
-        shotgun_fire.append(pygame.transform.scale(pygame.image.load(image_path).convert_alpha(), (255, 375)))
+        shotgun_fire.append(pygame.transform.scale(pygame.image.load(image_path).convert_alpha(), (306, 450)))
 
 
 dude = pygame.image.load(os.path.join(sprites_dir, "dude.png")).convert_alpha()
@@ -92,7 +95,6 @@ type2sprite = {
 map_created = False
 
 
-# function brought to you by GPT 3.5
 def set_dead_squares(array):
     rows = len(array)
     cols = len(array[0])
@@ -107,7 +109,7 @@ def set_dead_squares(array):
                     pass
         return False
 
-    updated_array = [[10 if array[row][col] == 0 and not has_nearby_zero(row, col) else array[row][col] for col in range(cols)] for row in range(rows)]
+    updated_array = [[17 if array[row][col] == 0 and not has_nearby_zero(row, col) else array[row][col] for col in range(cols)] for row in range(rows)]
 
     return updated_array
 
@@ -115,12 +117,35 @@ def set_dead_squares(array):
 with open("Map", "r") as f:
     map_lines = f.readlines()
 
+str2int = {
+    ",": 10,
+    ".": 11,
+    "/": 12,
+    "<": 13,
+    ">": 14,
+    "?": 15,
+    ":": 16
+}
+
+int2str = {
+    10: ",",
+    11: ".",
+    12: "/",
+    13: "<",
+    14: ">",
+    15: "?",
+    16: ":"
+}
+
 level = typed.List()
 tile_map = []
 for line in map_lines:
     map_row1 = []
     for char in line.strip():
-        map_row1.append(int(char))
+        try:
+            map_row1.append(int(char))
+        except ValueError:
+            map_row1.append(str2int[char])
     if map_row1:
         level.append(map_row1)
         tile_map.append(map_row1)
@@ -157,12 +182,12 @@ for i in textures:
 
 class Player:
     def __init__(self):
-        self.x = 192
-        self.y = 192
+        self.x = 96
+        self.y = 96
         self.z = 0
         self.oldx = self.x
         self.oldy = self.y
-        self.speed = 4
+        self.speed = 3
         self.rotation = 0
         self.ray_angle = 270
         self.fov = 60
@@ -170,14 +195,15 @@ class Player:
         self.you_lose = False
         self.isSprinting = 0
         self.view_bob_offset = 0.0
-        self.view_bob_speed = 0.0
-        self.bob_height = .02
+        self.view_bob_speed = 0.1
+        self.bob_height = 5
         self.mouse_sensitivity = 4
         self.settings = False
         self.moved = False
         self.health = 100
         self.can_shotgun = []
         self.breaking = False
+        self.crosshair = (0, 0, 0)
 
     def update(self):
 
@@ -188,7 +214,7 @@ class Player:
         if self.isSprinting > 0:
             self.isSprinting -= 1
         else:
-            self.speed = 4
+            self.speed = 3
 
         if self.health <= 0:
             player.you_lose = True
@@ -197,7 +223,7 @@ class Player:
         self.breaking = False
 
     def ui(self):
-        pygame.draw.rect(screen, (150, 150, 150), (10, 683, 300, 75))
+        pygame.draw.rect(screen, (150, 150, 150), (10, 998, 300, 75))
 
         bar_x = 0
         bar_color = (0, 255, 0)
@@ -208,7 +234,7 @@ class Player:
             bar_color = (255, 0, 0)
 
         for number in range(0, self.health):
-            pygame.draw.rect(screen, bar_color, (20 + bar_x, 693, 3, 55))
+            pygame.draw.rect(screen, bar_color, (20 + bar_x, 1008, 3, 55))
             bar_x += 2.8
 
     def collision(self, dx, dy):
@@ -223,25 +249,27 @@ class Player:
         row_index, col_index = sprite.get_index(self.y, self.x)
         new_row, new_col = sprite.get_index(new_y, new_x)
 
-        if tile_map[row_index][new_col] == 0:
-            final_x += dx
-            self.moved = True
+        try:
+            if tile_map[row_index][new_col] == 0:
+                final_x += dx
+                self.moved = True
 
-        if tile_map[new_row][col_index] == 0:
-            final_y += dy
-            self.moved = True
+            if tile_map[new_row][col_index] == 0:
+                final_y += dy
+                self.moved = True
 
-        if tile_map[new_row][new_col] == 9:
-            self.you_win = True
+            if tile_map[new_row][new_col] == 16:
+                self.you_win = True
 
-        if tile_map[new_row][new_col] > 0:
-            self.speed = 4
+            if tile_map[new_row][new_col] > 0:
+                self.speed = 4
 
-        if self.breaking:
-            tile_map[new_row][new_col] = 0
-            level = typed.List(tile_map)
-
-        return final_x, final_y
+            if self.breaking:
+                tile_map[new_row][new_col] = 0
+                level = typed.List(tile_map)
+            return final_x, final_y
+        except IndexError:
+            return self.x, self.y
 
 
 def random_color():
@@ -271,8 +299,8 @@ def cast_walls(angle, iteration, lvl_map, dead_map, x, y, z, fov, player_rot, ra
         row_index = int(end[1] / tile_size)
         col_index = int(end[0] / tile_size)
 
-        if dead_map[row_index][col_index] == 10:
-            total_skipped += tile_size
+        if dead_map[row_index][col_index] == 17:
+            total_skipped += 8
 
         if lvl_map[row_index][col_index] > 0:
 
@@ -290,14 +318,16 @@ def cast_walls(angle, iteration, lvl_map, dead_map, x, y, z, fov, player_rot, ra
             wall_top -= (wall_height * z)
             wall_bottom -= (wall_height * z)
 
-            if wall_type == 4:
+            if wall_type == 10:
                 translucent = True
 
-            if wall_type != 4 or ray_num % 2 != 0:
+            if wall_type != 10 or ray_num % 2 != 0:
                 return ray_x, wall_top, wall_bottom, wall_height, end[0], end[1], dist, wall_type, translucent
 
         end[0] = x + (i + total_skipped) * cos_angle
         end[1] = y + (i + total_skipped) * sin_angle
+
+    return 0, 0, 0, 0, 0, 0, 0, 0, False
 
 
 def render_walls():
@@ -310,19 +340,24 @@ def render_walls():
     ray_num = 0
     deg = player.ray_angle - (player.fov // 2)
     for i in range(screen_width // 2 + 1):
-        # row = ray_x, wall_top, wall_bottom, wall_height, end[0], end[1], dist, wall_type, translucent, alt_translucent
+        # row = ray_x, wall_top, wall_bottom, wall_height, end[0], end[1], dist, wall_type, translucent
 
-        row = cast_walls(math.radians(round(deg, 2)), it, level, dead_squares, x, y, player.z, player.fov, player.rotation, ray_num)
-        tile_type = textures[row[7] - 1]
-        tile_x = (row[4] + row[5]) % tile_size
-        wall_surf = tile_type.subsurface((tile_x, 0, 1, tile_type.get_height()))
+        try:
+            row = cast_walls(math.radians(round(deg, 2)), it, level, dead_squares, x, y, player.z, player.fov, player.rotation, ray_num)
+            tile_type = textures[row[7] - 1]
+            tile_x = ((row[4] + row[5]) / tile_size) % 1
+            tile_x = math.floor(tile_x * 16)
+            wall_surf = tile_type.subsurface((tile_x, 0, 1, 16))
 
-        if row[8]:
-            transWallSurf = pygame.transform.scale(wall_surf, (2, row[3]))
-        else:
-            transWallSurf = pygame.transform.scale(wall_surf, (4, row[3]))
+            if row[8]:
+                transWallSurf = pygame.transform.scale(wall_surf, (2, row[3]))
+            else:
+                transWallSurf = pygame.transform.scale(wall_surf, (4, row[3]))
 
-        screen.blit(transWallSurf, (int(row[0]), int(row[1])))
+            screen.blit(transWallSurf, (int(row[0]), int(row[1])))
+
+        except IndexError:
+            pass
 
         ray_num += 1
         it += player.fov / (screen_width / 2 + 1)
@@ -332,7 +367,12 @@ def render_walls():
 def save():
     global level, dead_squares
     with open('map', 'w') as f:
-        for i in tile_map:
+        map_copy = deepcopy(tile_map)
+        for i in range(len(map_copy)):
+            for j in range(len(map_copy[0])):
+                if map_copy[i][j] >= 10:
+                    map_copy[i][j] = int2str[map_copy[i][j]]
+        for i in map_copy:
             f.write(''.join(map(str, i)) + '\n')
         level = typed.List(tile_map)
 
@@ -372,14 +412,19 @@ def main():
     current_gun = 0
     start_ticks = 0
     current_tick = 0
+    show_particles = 0
     is_clicking = False
+
+    particle_info = (-100, sprite.Sprite(-5000, -5000, 1, 1))
 
     save()
 
     while running:
 
+        player.update()
         render_walls()
         sprite.render_sprites(sprite_list, player, screen, type2sprite, level, projectiles, tile_map)
+        pygame.draw.circle(screen, player.crosshair, (screen_width/2-3, screen_height/2), 6)
 
         if current_gun == 0:
             burrito_launcher.show_gun(is_clicking, int(current_tick - start_ticks), screen)
@@ -403,9 +448,12 @@ def main():
                             start_ticks = current_tick
                             is_clicking = True
                         elif burrito_shotgun.cooldown <= 0:
-                            burrito_shotgun.FLAMINGINFERNOBLAZE111111(player)
+                            particle_info = burrito_shotgun.FLAMINGINFERNOBLAZE111111(player)
+                            particle_info.append(randint(-50, 70))
+                            particle_info.append(randint(-10, 20))
                             burrito_shotgun.active = True
                             burrito_shotgun.cooldown = 60
+                            show_particles = 10
 
                 if event.type == pygame.MOUSEBUTTONUP:
                     if event.button == 1:
@@ -417,7 +465,7 @@ def main():
                 if event.key == pygame.K_LSHIFT:
                     player.z = 0
                     player.isSprinting = 30
-                    player.speed = 8
+                    player.speed = 6
                 if event.key == pygame.K_ESCAPE:
                     save()
                     pygame.mouse.set_visible(True)
@@ -488,6 +536,15 @@ def main():
             elif player.z < 0:
                 player.z += .1
 
+        # damage, sp
+
+        # dist, x, y, screen, damage, font
+        sp = particle_info[1]
+        if particle_info[0] > 0 and show_particles != 0:
+            guns.damage_particle(sp.dist, sp.screen_x, sp.screen_y, sp.screen_x + particle_info[2], sp.screen_y + particle_info[3],
+                                 screen, particle_info[0], damage_font, particle_info[2], show_particles)
+            show_particles -= 1
+
         if player.you_win:
             pygame.mouse.set_visible(True)
             screen.blit(victory_screen, (0, 0))
@@ -495,8 +552,8 @@ def main():
             if win.button(screen):
                 player.you_win = False
                 pygame.mouse.set_visible(False)
-                player.x = 192
-                player.y = 192
+                player.x = 96
+                player.y = 96
                 player.z = 0
 
         if player.you_lose:
@@ -504,17 +561,15 @@ def main():
             screen.blit(defeat_screen, (0, 0))
             if lose.button(screen):
                 player.you_lose = False
-                player.x = 192
-                player.y = 192
+                player.x = 96
+                player.y = 96
                 player.z = 0
                 player.health = 100
-                pygame.mouse.set_pos(576, 400)
+                pygame.mouse.set_pos(1250, 960)
                 return
-
-        pygame.display.set_caption("Fps: " + str(int(clock.get_fps())) + "/60")
+        if int(clock.get_fps()) < 50 and current_tick > 100:
+            pass
         pygame.display.update()
-
-        player.update()
 
         canChange += 1
         current_tick += .1
