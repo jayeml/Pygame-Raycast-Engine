@@ -73,5 +73,10 @@ v0.7.2
 
 v0.8.0
 - I did some stuff
+
+v0.9.0
+- increased screen size to 1920 x 1080
+- added 8 more wall types
+- added hit effects
 ```
 
